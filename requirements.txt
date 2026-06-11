@@ -1,0 +1,18 @@
+# Core app
+fastapi==0.115.12
+uvicorn==0.34.2
+pywebview==5.4
+requests==2.32.3
+pyyaml==6.0.2
+python-dateutil==2.9.0.post0
+
+# Retrieval
+chromadb==0.6.3
+sentence-transformers==3.4.1
+
+# Audio pipeline (torch is installed separately with the CUDA index, see setup.ps1)
+faster-whisper==1.1.1
+pyannote.audio==3.3.2
+
+# Tests
+pytest==8.3.5

@@ -1,0 +1,42 @@
+# ---- LLM (served by Ollama) ----
+llm:
+  model: "qwen3:8b"            # fallback that also works well: "qwen2.5:7b-instruct"
+  ollama_url: "http://127.0.0.1:11434"
+  num_ctx: 8192
+  temperature: 0.4
+  chat_history_turns: 8        # how many past turns are sent with each question
+
+# ---- Speech to text ----
+stt:
+  whisper_model: "large-v3"    # best Marathi/Hindi quality; "large-v3-turbo" = faster, less accurate
+  device: "cuda"               # "cpu" works but is ~10x slower
+  compute_type: "int8_float16" # fits the 8GB RTX 4060
+  language: null               # null = auto-detect per recording (recommended for mixed Marathi/Hindi)
+
+# ---- Speaker diarization (who said what) ----
+diarization:
+  enabled: true
+  model: "pyannote/speaker-diarization-3.1"
+  num_speakers: 2              # phone calls are almost always 2 people; set null to auto-detect
+
+# ---- Embeddings / retrieval ----
+rag:
+  embedding_model: "BAAI/bge-m3"
+  embedding_device: "cpu"      # CPU on purpose: keeps all 8GB VRAM free for the LLM while chatting
+  chunk_chars: 1800
+  chunk_overlap_messages: 2
+  session_gap_hours: 3
+  top_k_fetch: 10              # fetched from the vector store
+  top_k_use: 6                 # kept after recency boost, sent to the LLM
+  recency_boost: 0.1
+
+# ---- Profile / long-term memory ----
+profile:
+  max_facts_before_merge: 150
+  profile_md_max_chars: 6000
+
+# ---- App ----
+app:
+  host: "127.0.0.1"
+  port: 8765
+  window_title: "Manu — Personal Assistant"

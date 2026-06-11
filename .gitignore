@@ -1,0 +1,22 @@
+# Generated data — never commit personal content
+data/
+ingest/audio/*
+ingest/whatsapp/*
+ingest/sms/*
+!ingest/audio/.gitkeep
+!ingest/whatsapp/.gitkeep
+!ingest/sms/.gitkeep
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+
+# OS / editor
+Thumbs.db
+.DS_Store
+.vscode/
+.idea/

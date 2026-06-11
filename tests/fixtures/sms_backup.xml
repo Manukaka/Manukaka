@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
+<smses count="4">
+  <sms protocol="0" address="+919812345678" date="1715578860000" type="1" subject="null" body="Your electricity bill of Rs.1450 is due on 20-05-2024" contact_name="MSEB" read="1" />
+  <sms protocol="0" address="+919812345678" date="1715579000000" type="2" subject="null" body="Paid" contact_name="MSEB" read="1" />
+  <sms protocol="0" address="+918888777666" date="1715665200000" type="1" subject="null" body="Bhai kal milte hai office me" contact_name="(Unknown)" read="1" />
+  <sms protocol="0" address="+917777666555" date="1715665300000" type="1" subject="null" body="" contact_name="Empty" read="1" />
+</smses>
