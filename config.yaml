@@ -30,6 +30,13 @@ rag:
   top_k_use: 6                 # kept after recency boost, sent to the LLM
   recency_boost: 0.1
 
+# ---- Photos (Google Takeout) ----
+photos:
+  captions: true                 # false = skip AI photo descriptions (much faster)
+  caption_model: "qwen2.5vl:7b"  # faster but less detailed alternative: "gemma3:4b"
+  caption_max_px: 1024           # photos are downscaled to this before captioning
+  thumb_px: 320
+
 # ---- Profile / long-term memory ----
 profile:
   max_facts_before_merge: 150

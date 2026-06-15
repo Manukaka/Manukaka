@@ -15,23 +15,73 @@
     </div>
   </header>
 
+  <nav id="tabbar">
+    <button class="tab active" data-tab="chat">💬 Chat</button>
+    <button class="tab" data-tab="mindmap">🕸 Mind Map</button>
+    <button class="tab" data-tab="timeline">🕒 Timeline</button>
+    <button class="tab" data-tab="people">👥 People</button>
+    <button class="tab" data-tab="places">📍 Places</button>
+  </nav>
+
   <div id="ingestPanel" class="hidden">
     <div id="ingestLog"></div>
   </div>
 
-  <main id="chat">
-    <div class="msg assistant">
-      <div class="bubble">नमस्कार! 🙏 Drop your call recordings, WhatsApp exports and SMS backups
-      into the <b>ingest</b> folders, press <b>Process new files</b>, and then ask me anything
-      about your life — Marathi, Hindi, or English, जसं तुम्हाला सोयीचं वाटेल.</div>
-    </div>
-  </main>
+  <!-- CHAT -->
+  <section id="tab-chat" class="tabpane active">
+    <main id="chat">
+      <div class="msg assistant">
+        <div class="bubble">नमस्कार! 🙏 Drop your call recordings, WhatsApp exports, SMS backups
+        and Google Photos (Takeout) into the <b>ingest</b> folders, press <b>Process new files</b>,
+        then ask me anything about your life — Marathi, Hindi, or English.</div>
+      </div>
+    </main>
+    <footer>
+      <textarea id="input" rows="1" placeholder="Ask me anything… / काहीही विचारा…"></textarea>
+      <button id="sendBtn">Send</button>
+    </footer>
+  </section>
 
-  <footer>
-    <textarea id="input" rows="1" placeholder="Ask me anything… / काहीही विचारा…"></textarea>
-    <button id="sendBtn">Send</button>
-  </footer>
+  <!-- MIND MAP -->
+  <section id="tab-mindmap" class="tabpane">
+    <div class="pane-toolbar">
+      <span>Your life as a network — people, places and events. Click a dot to explore.</span>
+      <button id="dimToggle" class="ghost">Switch to 2D</button>
+    </div>
+    <div id="graph"></div>
+    <div id="sidePanel" class="hidden"></div>
+  </section>
+
+  <!-- TIMELINE -->
+  <section id="tab-timeline" class="tabpane">
+    <div id="timeline"></div>
+  </section>
+
+  <!-- PEOPLE -->
+  <section id="tab-people" class="tabpane">
+    <div id="peopleGrid"></div>
+    <div id="peoplePanel" class="hidden"></div>
+  </section>
+
+  <!-- PLACES -->
+  <section id="tab-places" class="tabpane">
+    <div class="pane-toolbar"><span id="placesHint">Places from your photos. Click a pin to see the photos.</span></div>
+    <canvas id="placesCanvas"></canvas>
+    <div id="placesStrip"></div>
+  </section>
 </div>
-<script src="/ui/app.js"></script>
+
+<!-- Photo lightbox -->
+<div id="lightbox" class="hidden"><img id="lightboxImg" alt="photo"></div>
+
+<!-- Offline vendored libraries -->
+<script src="/ui/vendor/force-graph.min.js" defer></script>
+<script src="/ui/vendor/3d-force-graph.min.js" defer></script>
+<script src="/ui/tabs.js" defer></script>
+<script src="/ui/graph.js" defer></script>
+<script src="/ui/timeline.js" defer></script>
+<script src="/ui/people.js" defer></script>
+<script src="/ui/places.js" defer></script>
+<script src="/ui/app.js" defer></script>
 </body>
 </html>

@@ -76,11 +76,29 @@ def extract(prompt: str, schema: dict, system: Optional[str] = None) -> Optional
         return None
 
 
-def unload() -> None:
-    """Ask Ollama to release the model's VRAM (needed before loading whisper)."""
+def caption(image_b64: str, prompt: str, model: str) -> Optional[str]:
+    """Describe one image with a local vision model. Returns None on failure."""
+    cfg = _cfg()
+    payload = {
+        "model": model,
+        "messages": [{"role": "user", "content": prompt, "images": [image_b64]}],
+        "stream": False,
+        "options": {"num_ctx": 2048, "temperature": 0.2},
+    }
+    try:
+        r = requests.post(f"{cfg['ollama_url']}/api/chat", json=payload, timeout=300)
+        r.raise_for_status()
+        return r.json()["message"]["content"]
+    except (requests.RequestException, ValueError, KeyError):
+        return None
+
+
+def unload(model: Optional[str] = None) -> None:
+    """Ask Ollama to release a model's VRAM (needed before loading whisper,
+    and after the vision model finishes captioning)."""
     cfg = _cfg()
     try:
         requests.post(f"{cfg['ollama_url']}/api/generate",
-                      json={"model": cfg["model"], "keep_alive": 0}, timeout=30)
+                      json={"model": model or cfg["model"], "keep_alive": 0}, timeout=30)
     except requests.RequestException:
         pass
