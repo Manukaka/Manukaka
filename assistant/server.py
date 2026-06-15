@@ -83,6 +83,79 @@ def status():
         return {"running": STATE.running, "log": list(STATE.log)}
 
 
+# ---------------------------------------------------------------- life-graph
+
+@app.get("/api/graph")
+def graph():
+    from .graph import store as graph_store
+    return graph_store.graph_payload()
+
+
+@app.get("/api/timeline")
+def timeline(before_ts: Optional[float] = None, limit: int = 100):
+    from .graph import store as graph_store
+    items = graph_store.timeline(before_ts, min(limit, 200))
+    next_cursor = items[-1]["ts"] if items else None
+    return {"items": items, "next_before_ts": next_cursor}
+
+
+@app.get("/api/people")
+def people():
+    from .graph import store as graph_store
+    return graph_store.people_list()
+
+
+@app.get("/api/person/{person_id}")
+def person(person_id: str):
+    from .graph import store as graph_store
+    payload = graph_store.person_payload(person_id)
+    if not payload:
+        raise HTTPException(404, "Unknown person")
+    return payload
+
+
+@app.post("/api/person/{person_id}/summary")
+def person_summary(person_id: str):
+    if STATE.running:
+        raise HTTPException(409, "Please wait — I'm still processing your files.")
+    if not ollama_client.is_up():
+        raise HTTPException(503, "Ollama is not running.")
+    from .graph import summary as graph_summary
+    text = graph_summary.generate(person_id)
+    if not text:
+        raise HTTPException(404, "Could not write a summary for this person.")
+    return {"summary": text}
+
+
+@app.get("/api/places")
+def places():
+    from .graph import store as graph_store
+    return graph_store.places_payload()
+
+
+def _safe_file(base, path) -> FileResponse:
+    resolved = path.resolve()
+    if not str(resolved).startswith(str(base.resolve())) or not resolved.is_file():
+        raise HTTPException(404, "Not found")
+    return FileResponse(resolved)
+
+
+@app.get("/api/thumb/{photo_id}")
+def thumb(photo_id: str):
+    return _safe_file(config.THUMBS_DIR, config.THUMBS_DIR / f"{photo_id}.jpg")
+
+
+@app.get("/api/photo/{photo_id}")
+def photo(photo_id: str):
+    from .graph import store as graph_store
+    row = graph_store.get_photo(photo_id)
+    if not row:
+        raise HTTPException(404, "Not found")
+    return _safe_file(config.INGEST_PHOTOS, config.INGEST_PHOTOS / row["rel_path"])
+
+
+# ---------------------------------------------------------------- chat
+
 @app.post("/api/chat")
 def chat(req: ChatRequest):
     if STATE.running:

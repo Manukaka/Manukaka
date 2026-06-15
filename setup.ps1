@@ -42,6 +42,9 @@ pip install -r requirements.txt
 Step "Downloading the chat model (qwen3:8b, ~5 GB, one time)…"
 ollama pull qwen3:8b
 
+Step "Downloading the photo-understanding model (qwen2.5vl:7b, ~6 GB, one time)…"
+ollama pull qwen2.5vl:7b
+
 Step "Downloading speech + embedding models…"
 python scripts\download_models.py
 

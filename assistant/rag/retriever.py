@@ -6,7 +6,8 @@ from typing import Dict, List
 from .. import config
 from . import embeddings, store
 
-SOURCE_NAMES = {"whatsapp": "WhatsApp with", "sms": "SMS with", "call": "Call with"}
+SOURCE_NAMES = {"whatsapp": "WhatsApp with", "sms": "SMS with", "call": "Call with",
+                "photo": "Photo with"}
 
 
 def _recency_factor(end_ts: float, now: float) -> float:
@@ -34,5 +35,9 @@ def format_context(hits: List[Dict]) -> str:
         meta = h["metadata"]
         label = SOURCE_NAMES.get(meta.get("source_type"), "From")
         when = datetime.fromtimestamp(meta.get("start_ts", 0)).strftime("%d %b %Y")
-        blocks.append(f"[{label} {meta.get('contact', '?')}, {when}]\n{h['text']}")
+        contact = meta.get("contact") or ""
+        who = f" {contact}" if contact else ""
+        if not contact and label.endswith(" with"):
+            label = label[:-5]
+        blocks.append(f"[{label}{who}, {when}]\n{h['text']}")
     return "\n\n".join(blocks)

@@ -8,6 +8,7 @@ from .. import config
 from ..llm import ollama_client, prompts
 
 CATEGORIES = ("people", "commitments", "finances", "health", "work", "preferences")
+# events/topics also come back from extraction but feed the life-graph, not the profile
 
 
 def load_profile() -> Dict:
@@ -29,8 +30,10 @@ def load_profile_md() -> str:
     return ""
 
 
-def extract_from_conversation(source_label: str, conversation_text: str) -> None:
-    """One LLM call per session/transcript (map step). Failures are non-fatal."""
+def extract_from_conversation(source_label: str, conversation_text: str) -> Dict:
+    """One LLM call per session/transcript (map step). Failures are non-fatal.
+    Returns the raw extraction dict so the runner can feed events/topics to the
+    life-graph."""
     # Very long calls are truncated; durable facts repeat enough that this is fine
     text = conversation_text[:12000]
     result = ollama_client.extract(
@@ -39,7 +42,7 @@ def extract_from_conversation(source_label: str, conversation_text: str) -> None
         system=prompts.PROFILE_EXTRACTION_SYSTEM,
     )
     if not result:
-        return
+        return {}
     profile = load_profile()
     today = date.today().isoformat()
     for cat in CATEGORIES:
@@ -48,6 +51,7 @@ def extract_from_conversation(source_label: str, conversation_text: str) -> None
             profile.setdefault(cat, []).append(entry)
     profile = _maybe_merge(profile)
     save_profile(profile)
+    return result
 
 
 def _fact_text(entry: Dict) -> str:

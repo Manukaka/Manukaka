@@ -28,8 +28,10 @@ def build_system_prompt(profile_md: str, context_block: str) -> str:
 PROFILE_EXTRACTION_SYSTEM = (
     "You extract durable personal facts from one conversation. Only record things "
     "worth remembering weeks later (relationships, commitments, money matters, "
-    "health, work, strong preferences). Ignore small talk. Write facts in English, "
-    "short and specific, even if the conversation is in Marathi or Hindi. "
+    "health, work, strong preferences). Also extract notable events (trips, "
+    "functions, meetings — with who/where/when if mentioned) and up to 3 short "
+    "discussion topics. Ignore small talk. Write everything in English, short and "
+    "specific, even if the conversation is in Marathi or Hindi. "
     "If the conversation contains nothing durable, return empty lists."
 )
 
@@ -50,9 +52,23 @@ PROFILE_EXTRACTION_SCHEMA = {
         "health": {"type": "array", "items": {"type": "string"}},
         "work": {"type": "array", "items": {"type": "string"}},
         "preferences": {"type": "array", "items": {"type": "string"}},
+        "events": {"type": "array", "items": {"type": "object", "properties": {
+            "name": {"type": "string"},
+            "with_whom": {"type": "array", "items": {"type": "string"}},
+            "where": {"type": "string"},
+            "when": {"type": "string"},
+        }, "required": ["name"]}},
+        "topics": {"type": "array", "items": {"type": "string"}},
     },
-    "required": ["people", "commitments", "finances", "health", "work", "preferences"],
+    "required": ["people", "commitments", "finances", "health", "work",
+                 "preferences", "events", "topics"],
 }
+
+CAPTION_PROMPT = (
+    "Describe this photo in one or two sentences in English: who/what is in it, "
+    "what is happening, and the setting. Be specific and factual; do not guess "
+    "names unless given."
+)
 
 
 def build_extraction_prompt(source_label: str, conversation_text: str) -> str:

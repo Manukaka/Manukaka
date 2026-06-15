@@ -10,6 +10,11 @@ python-dateutil==2.9.0.post0
 chromadb==0.6.3
 sentence-transformers==3.4.1
 
+# Photos (Google Takeout): images, HEIC (iPhone), offline reverse geocoding
+Pillow==11.1.0
+pillow-heif==0.21.0
+reverse_geocoder==1.5.1
+
 # Audio pipeline (torch is installed separately with the CUDA index, see setup.ps1)
 faster-whisper==1.1.1
 pyannote.audio==3.3.2
