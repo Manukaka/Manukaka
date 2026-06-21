@@ -1,0 +1,19 @@
+{
+  "note": "Trusted Indian fact-checking and primary sources Satya prioritises when citing evidence.",
+  "fact_checkers": [
+    {"name": "PIB Fact Check", "url": "https://pib.gov.in/factcheck.aspx", "type": "government"},
+    {"name": "Alt News", "url": "https://www.altnews.in", "type": "independent"},
+    {"name": "BOOM Live", "url": "https://www.boomlive.in", "type": "independent"},
+    {"name": "Factly", "url": "https://factly.in", "type": "independent"},
+    {"name": "Vishvas News", "url": "https://www.vishvasnews.com", "type": "ifcn"},
+    {"name": "The Quint WebQoof", "url": "https://www.thequint.com/news/webqoof", "type": "independent"},
+    {"name": "Fact Crescendo", "url": "https://www.factcrescendo.com", "type": "independent"},
+    {"name": "NewsChecker", "url": "https://newschecker.in", "type": "independent"}
+  ],
+  "primary_sources": [
+    {"name": "Press Information Bureau", "url": "https://pib.gov.in"},
+    {"name": "Reserve Bank of India", "url": "https://www.rbi.org.in"},
+    {"name": "Election Commission of India", "url": "https://www.eci.gov.in"},
+    {"name": "Ministry of Health and Family Welfare", "url": "https://www.mohfw.gov.in"}
+  ]
+}
