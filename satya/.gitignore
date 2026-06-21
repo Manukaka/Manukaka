@@ -1,0 +1,20 @@
+# Secrets & local data
+.env
+*.sqlite3
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+
+# Flutter / Dart (platform scaffolding is generated with `flutter create .`)
+app/.dart_tool/
+app/build/
+app/.flutter-plugins
+app/.flutter-plugins-dependencies
+app/ios/
+app/linux/
+app/macos/
+app/windows/
+app/web/

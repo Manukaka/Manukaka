@@ -1,0 +1,40 @@
+{
+  "verdicts": [
+    {
+      "code": "TRUE",
+      "label_en": "True",
+      "label_hi": "सच",
+      "color": "#1B873F",
+      "description": "The claim is accurate and supported by reliable evidence."
+    },
+    {
+      "code": "MOSTLY_TRUE",
+      "label_en": "Mostly True",
+      "label_hi": "ज़्यादातर सच",
+      "color": "#5BA829",
+      "description": "The core of the claim is accurate but some details are missing or imprecise."
+    },
+    {
+      "code": "MISLEADING",
+      "label_en": "Misleading",
+      "label_hi": "भ्रामक",
+      "color": "#E8830C",
+      "description": "Technically based on real facts but framed, cropped, or dated in a way that misleads. Includes old photos/videos shared as new."
+    },
+    {
+      "code": "FALSE",
+      "label_en": "False",
+      "label_hi": "झूठ",
+      "color": "#D32F2F",
+      "description": "The claim is inaccurate and contradicted by reliable evidence."
+    },
+    {
+      "code": "UNVERIFIABLE",
+      "label_en": "Can't verify yet",
+      "label_hi": "पुष्टि नहीं हो सकी",
+      "color": "#757575",
+      "description": "There is not enough reliable evidence available to confirm or deny the claim."
+    }
+  ],
+  "confidence_levels": ["high", "medium", "low"]
+}
