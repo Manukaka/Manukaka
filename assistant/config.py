@@ -15,6 +15,7 @@ INGEST_DIR = ROOT / "ingest"
 INGEST_AUDIO = INGEST_DIR / "audio"
 INGEST_WHATSAPP = INGEST_DIR / "whatsapp"
 INGEST_SMS = INGEST_DIR / "sms"
+INGEST_TELEGRAM = INGEST_DIR / "telegram"
 
 DATA_DIR = ROOT / "data"
 CHROMA_DIR = DATA_DIR / "chroma"
@@ -23,7 +24,9 @@ PROFILE_DIR = DATA_DIR / "profile"
 PROFILE_BACKUP_DIR = PROFILE_DIR / "backups"
 PROFILE_JSON = PROFILE_DIR / "profile.json"
 PROFILE_MD = PROFILE_DIR / "profile.md"
+COMMITMENTS_JSON = PROFILE_DIR / "commitments.json"
 MANIFEST_PATH = DATA_DIR / "manifest.json"
+CHAT_DB = DATA_DIR / "chat.db"
 LOG_DIR = DATA_DIR / "logs"
 
 UI_DIR = ROOT / "assistant" / "ui"
@@ -121,6 +124,6 @@ CFG = load_config(ROOT / "config.yaml")
 
 
 def ensure_dirs() -> None:
-    for d in (INGEST_AUDIO, INGEST_WHATSAPP, INGEST_SMS,
+    for d in (INGEST_AUDIO, INGEST_WHATSAPP, INGEST_SMS, INGEST_TELEGRAM,
               CHROMA_DIR, TRANSCRIPTS_DIR, PROFILE_DIR, LOG_DIR):
         d.mkdir(parents=True, exist_ok=True)

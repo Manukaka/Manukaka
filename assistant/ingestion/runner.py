@@ -21,7 +21,7 @@ from ..llm import ollama_client
 from ..log import get_logger
 from ..memory import profile as memory_profile
 from . import audio as audio_mod
-from . import chunking, sms, whatsapp
+from . import chunking, sms, telegram, whatsapp
 from .models import Message
 
 StatusCb = Callable[[str], None]
@@ -68,15 +68,16 @@ def run_ingest(status: StatusCb = print) -> Dict[str, int]:
     """Process everything new in the ingest/ folders. Returns simple counters."""
     config.ensure_dirs()
     manifest = _load_manifest()
-    counters = {"audio": 0, "whatsapp": 0, "sms": 0, "chunks": 0, "errors": 0}
+    counters = {"audio": 0, "whatsapp": 0, "sms": 0, "telegram": 0, "chunks": 0, "errors": 0}
     all_messages: List[Message] = []
     sessions_for_profile: List[tuple] = []  # (source_label, text)
 
     audio_files = _new_files(config.INGEST_AUDIO, audio_mod.AUDIO_EXTS, manifest)
     wa_files = _new_files(config.INGEST_WHATSAPP, {".txt"}, manifest)
     sms_files = _new_files(config.INGEST_SMS, {".xml"}, manifest)
+    tg_files = _new_files(config.INGEST_TELEGRAM, {".json"}, manifest)
 
-    if not (audio_files or wa_files or sms_files):
+    if not (audio_files or wa_files or sms_files or tg_files):
         status("No new files found in the ingest folders.")
         return counters
 
@@ -136,6 +137,18 @@ def run_ingest(status: StatusCb = print) -> Dict[str, int]:
             log.exception("SMS parse failed for %s", f.name)
             status(f"FAILED on {f.name}:\n{traceback.format_exc(limit=2)}")
 
+    for f in tg_files:
+        status(f"Reading Telegram export: {f.name}")
+        try:
+            msgs = telegram.parse_telegram(f)
+            all_messages.extend(msgs)
+            manifest[_sha256(f)] = f.name
+            counters["telegram"] += 1
+        except Exception:
+            counters["errors"] += 1
+            log.exception("Telegram parse failed for %s", f.name)
+            status(f"FAILED on {f.name}:\n{traceback.format_exc(limit=2)}")
+
     # ---- Phase 4b: chunk + embed (CPU) + store ----
     if all_messages:
         cfg = config.CFG["rag"]
@@ -186,7 +199,7 @@ def run_ingest(status: StatusCb = print) -> Dict[str, int]:
 
     status(
         f"Done. Calls: {counters['audio']}, WhatsApp files: {counters['whatsapp']}, "
-        f"SMS files: {counters['sms']}, chunks indexed: {counters['chunks']}, "
-        f"errors: {counters['errors']}."
+        f"SMS files: {counters['sms']}, Telegram files: {counters['telegram']}, "
+        f"chunks indexed: {counters['chunks']}, errors: {counters['errors']}."
     )
     return counters

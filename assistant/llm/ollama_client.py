@@ -53,6 +53,21 @@ def chat_stream(messages: List[Dict[str, str]]) -> Iterator[str]:
                 break
 
 
+def chat_once(messages: List[Dict[str, str]]) -> str:
+    """Non-streaming chat completion (digest and other one-shot answers)."""
+    cfg = _cfg()
+    payload = {
+        "model": cfg["model"],
+        "messages": messages,
+        "stream": False,
+        "think": False,
+        "options": {"num_ctx": cfg["num_ctx"], "temperature": cfg["temperature"]},
+    }
+    r = requests.post(f"{cfg['ollama_url']}/api/chat", json=payload, timeout=600)
+    r.raise_for_status()
+    return r.json().get("message", {}).get("content", "")
+
+
 def extract(prompt: str, schema: dict, system: Optional[str] = None) -> Optional[dict]:
     """One-shot structured extraction using Ollama's JSON-schema `format` output."""
     cfg = _cfg()

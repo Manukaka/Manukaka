@@ -3,9 +3,11 @@ data/
 ingest/audio/*
 ingest/whatsapp/*
 ingest/sms/*
+ingest/telegram/*
 !ingest/audio/.gitkeep
 !ingest/whatsapp/.gitkeep
 !ingest/sms/.gitkeep
+!ingest/telegram/.gitkeep
 
 # Python
 .venv/

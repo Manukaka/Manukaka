@@ -14,7 +14,8 @@ def client():
 
 
 @pytest.fixture(autouse=True)
-def clean_state():
+def clean_state(tmp_data_dirs):
+    # tmp_data_dirs keeps side effects (chat.db, profile files) out of the repo
     yield
     runner.GPU_BUSY.clear()
     server.STATE.finish()
@@ -80,6 +81,95 @@ def test_chat_emits_sources_event_before_done(client, monkeypatch):
     assert '"sources"' in r.text
     assert '"n": 1' in r.text
     assert r.text.index('"sources"') < r.text.index('"done"')
+
+
+def test_chat_persists_turn_to_chatlog(client, monkeypatch, tmp_data_dirs):
+    from assistant.memory import chatlog
+    monkeypatch.setattr(ollama_client, "is_up", lambda: True)
+    monkeypatch.setattr(ollama_client, "chat_stream", lambda messages: iter(["uttar"]))
+    client.post("/api/chat", json={"message": "prashna"})
+    msgs = chatlog.recent()
+    assert [m["content"] for m in msgs] == ["prashna", "uttar"]
+
+
+def test_history_endpoint_returns_persisted_messages(client, tmp_data_dirs):
+    from assistant.memory import chatlog
+    chatlog.append("user", "hello")
+    chatlog.append("assistant", "namaste")
+    body = client.get("/api/history").json()
+    assert body["messages"] == [{"role": "user", "content": "hello"},
+                                {"role": "assistant", "content": "namaste"}]
+
+
+def test_upcoming_endpoint(client, tmp_data_dirs):
+    from assistant.memory import commitments
+    commitments.save([{"what": "pay bill", "due_date": "2030-01-01",
+                       "due_text": "1 Jan", "with_whom": ""}])
+    body = client.get("/api/upcoming").json()
+    assert body["due"][0]["what"] == "pay bill"
+    assert body["undated"] == []
+
+
+def test_contacts_endpoint_aggregates_index_and_profile(client, monkeypatch, tmp_data_dirs):
+    from assistant import server
+    docs = [
+        {"id": "1", "text": "x", "metadata": {"contact": "Rahul", "end_ts": 200.0,
+                                              "source_type": "whatsapp"}},
+        {"id": "2", "text": "y", "metadata": {"contact": "Rahul", "end_ts": 100.0,
+                                              "source_type": "call"}},
+        {"id": "3", "text": "z", "metadata": {"contact": "Aai", "end_ts": 50.0,
+                                              "source_type": "sms"}},
+    ]
+    monkeypatch.setattr(server, "_index_docs", lambda: docs)
+    monkeypatch.setattr(server.memory_profile, "load_profile", lambda: {
+        "people": [{"fact": {"name": "Rahul", "relation": "friend",
+                             "notes": "planning Goa trip"}}],
+    })
+    contacts = client.get("/api/contacts").json()["contacts"]
+    assert [c["name"] for c in contacts] == ["Rahul", "Aai"]  # most recent first
+    rahul = contacts[0]
+    assert rahul["chunks"] == 2
+    assert rahul["sources"] == ["call", "whatsapp"]
+    assert any("Goa" in f for f in rahul["facts"])
+
+
+def test_digest_endpoint_summarizes_recent_chunks(client, monkeypatch):
+    import time as _time
+
+    from assistant import server
+    now = _time.time()
+    docs = [{"id": "1", "text": "Goa trip finalized with Rahul",
+             "metadata": {"end_ts": now - 3600}},
+            {"id": "2", "text": "ancient news",
+             "metadata": {"end_ts": now - 90 * 86400}}]
+    seen = {}
+
+    def fake_chat_once(messages):
+        seen["prompt"] = messages[-1]["content"]
+        return "**Trips**: Goa plan is on."
+
+    monkeypatch.setattr(server, "_index_docs", lambda: docs)
+    monkeypatch.setattr(ollama_client, "is_up", lambda: True)
+    monkeypatch.setattr(ollama_client, "chat_once", fake_chat_once)
+
+    body = client.post("/api/digest", json={"days": 7}).json()
+    assert body["digest"] == "**Trips**: Goa plan is on."
+    assert "Goa trip finalized" in seen["prompt"]
+    assert "ancient news" not in seen["prompt"]  # outside the window
+
+
+def test_digest_with_no_recent_data(client, monkeypatch):
+    from assistant import server
+    monkeypatch.setattr(server, "_index_docs", lambda: [])
+    monkeypatch.setattr(ollama_client, "is_up", lambda: True)
+    body = client.post("/api/digest", json={"days": 7}).json()
+    assert body["digest"] is None
+    assert "No conversations" in body["message"]
+
+
+def test_digest_requires_ollama(client, monkeypatch):
+    monkeypatch.setattr(ollama_client, "is_up", lambda: False)
+    assert client.post("/api/digest", json={"days": 7}).status_code == 503
 
 
 def test_ingest_rejects_concurrent_runs(client, monkeypatch):

@@ -69,31 +69,53 @@ is merged to `main`.
    UI shows a sources footer under each answer (only excerpts actually cited).
    Clickable transcript view moves to Phase 5's transcript browser.
 
-### Phase 3 — Memory that acts like memory
+### Phase 3 — Memory that acts like memory — **done**
 
-1. **Structured commitments**: extract due dates into structured records; an
-   "Upcoming" panel in the UI; "what should I not forget?" answered from data,
-   not vibes.
-2. **Per-contact profiles**: a page per person (relationship, open threads,
-   last contact date).
-3. **Weekly digest**: on-demand summary of the week across all sources.
+1. ✅ **Structured commitments** (`memory/commitments.py`): extracted
+   commitments get a parsed ISO due date (dateutil, day-first, next-year
+   rollover), deduped storage in `data/profile/commitments.json`, an
+   `/api/upcoming` endpoint, and an **Upcoming** panel in the UI.
+2. ✅ **Per-contact overview**: `/api/contacts` + **People** panel — last
+   contact date, memory counts, source types, and the profile facts Manu has
+   gathered about each person.
+3. ✅ **Weekly digest**: `/api/digest` + **Digest** button — summarizes the
+   last 7 days of indexed conversations with the local LLM (bounded context,
+   most recent first).
 
 ### Phase 4 — More data in
 
-1. **Telegram export** parser (JSON export format).
-2. **WhatsApp voice notes**: route exported `.opus` voice notes through the
-   existing Whisper pipeline.
-3. **Watch folders**: auto-ingest when new files appear (no button pressing).
-4. **Email** (`.eml`/mbox) parser — optional, later.
+1. ✅ **Telegram export** parser (`ingestion/telegram.py`): handles both the
+   full-account `result.json` and single-chat exports, entity-list text,
+   skips service events/media/saved-messages; drop files in `ingest/telegram/`.
+2. ✅ **Voice notes**: `ingest/audio/` already accepts `.opus`/`.m4a` — drop
+   exported WhatsApp/Telegram voice notes there and they go through Whisper.
+   *(No code needed; documented.)*
+3. ⬜ **Watch folders** — sub-plan:
+   - a `watchdog`-free polling thread (10 s) started from `app.py`, guarded by
+     a new `app.auto_ingest: false` config flag (off by default: auto-ingest
+     unloads the LLM mid-chat, so it must be a choice)
+   - only trigger when file sizes are stable across two polls (copy finished)
+   - reuse `STATE.try_start()` so manual + auto ingest can never overlap
+4. ⬜ **Email** (`.eml`/mbox) parser — sub-plan: stdlib `email` + `mailbox`
+   modules, contact = counterpart address's display name, thread → session;
+   needs a fixture set (plain, HTML-only, and Devanagari subject cases).
 
 ### Phase 5 — Product polish
 
-1. **Persistent chat sessions** (SQLite): history survives restarts, multiple
-   named conversations.
-2. **Transcript browser** in the UI (search + read transcripts and chats).
-3. **Packaging**: single-file installer (PyInstaller) so setup doesn't require
-   the console.
-4. **Tray app + autostart** so Manu is always one click away.
+1. ✅ **Persistent chat history** (`memory/chatlog.py`, SQLite): every chat
+   turn is stored in `data/chat.db`; `/api/history` restores it on window
+   open. *(Multiple named conversations still to do — see sub-plan below.)*
+2. ⬜ **Named conversations** — sub-plan: `conversations` table + `conv_id`
+   column, `GET/POST /api/conversations`, a left sidebar in the UI, and
+   "new chat" resets context without deleting history.
+3. ⬜ **Transcript browser** — sub-plan: `GET /api/transcripts` (list) and
+   `GET /api/transcripts/{stem}` (text) reading `data/transcripts/`; make the
+   citation chips in the sources footer clickable to open the transcript in
+   the info panel.
+4. ⬜ **Packaging** — sub-plan: PyInstaller one-dir build of `assistant.app`,
+   models still downloaded on first run (they cannot be bundled), an Inno
+   Setup script for a real installer, and a tray icon (`pystray`) + Startup
+   shortcut for autostart. Needs a Windows machine to build/verify.
 
 ## 3. Suggested order of work
 
@@ -101,4 +123,8 @@ Phase 1 is the multiplier — every later feature lands faster and safer on top
 of CI + tests + logging. Phases 2 and 3 deliver the most user-visible
 intelligence gains. Phases 4 and 5 can be interleaved based on need.
 
-Each phase item should land as its own small PR with tests.
+Remaining items, in suggested order: transcript browser (5.3, small and makes
+citations tangible) → watch folders (4.3) → named conversations (5.2) →
+email parser (4.4) → packaging (5.4, needs Windows).
+
+Each remaining item should land as its own small PR with tests.

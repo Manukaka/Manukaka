@@ -10,7 +10,8 @@ from . import embeddings, keyword, query_analysis, rewrite, store
 
 log = get_logger(__name__)
 
-SOURCE_NAMES = {"whatsapp": "WhatsApp with", "sms": "SMS with", "call": "Call with"}
+SOURCE_NAMES = {"whatsapp": "WhatsApp with", "sms": "SMS with",
+                "call": "Call with", "telegram": "Telegram with"}
 
 
 def _recency_factor(end_ts: float, now: float) -> float:

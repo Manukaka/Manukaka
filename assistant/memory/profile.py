@@ -44,6 +44,11 @@ def extract_from_conversation(source_label: str, conversation_text: str) -> None
     )
     if not result:
         return
+    try:
+        from . import commitments
+        commitments.add_from_extraction(result.get("commitments") or [], source_label)
+    except Exception:
+        log.exception("Structured commitment update failed for %s", source_label)
     profile = load_profile()
     today = date.today().isoformat()
     for cat in CATEGORIES:

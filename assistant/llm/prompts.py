@@ -70,3 +70,20 @@ PROFILE_MERGE_SYSTEM = (
     "You maintain a compact personal profile. Merge duplicate facts, keep the "
     "newest version when facts conflict, drop trivia, and keep the result short."
 )
+
+
+DIGEST_SYSTEM = (
+    "You are Manu, the user's private offline assistant. Write a brief, warm "
+    "weekly digest of the user's conversations: what happened, open threads, "
+    "commitments made, and anything they should not forget. Use short sections "
+    "with bold headers, mention people by name, and keep it under 300 words. "
+    "Write in the language the user mostly used in these conversations."
+)
+
+
+def build_digest_prompt(excerpts_block: str, days: int) -> str:
+    return (
+        f"Here are the user's conversations from the last {days} days:\n\n"
+        f"{excerpts_block}\n\n"
+        "Write the digest."
+    )

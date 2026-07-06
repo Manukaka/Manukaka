@@ -11,12 +11,20 @@
     <div class="title">🪷 Manu <span class="sub">your private offline assistant</span></div>
     <div class="header-right">
       <span id="health" class="health">checking…</span>
+      <button id="upcomingBtn" class="secondary" title="Commitments with due dates, extracted from your conversations">Upcoming</button>
+      <button id="peopleBtn" class="secondary" title="People in your conversations and what Manu knows about them">People</button>
+      <button id="digestBtn" class="secondary" title="A summary of your last 7 days">Digest</button>
       <button id="ingestBtn" title="Process new files dropped into the ingest/ folders">Process new files</button>
     </div>
   </header>
 
   <div id="ingestPanel" class="hidden">
     <div id="ingestLog"></div>
+  </div>
+
+  <div id="infoPanel" class="hidden">
+    <div id="infoContent"></div>
+    <button id="infoClose" class="secondary">Close</button>
   </div>
 
   <main id="chat">
