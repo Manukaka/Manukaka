@@ -11,18 +11,26 @@ A sha256 manifest makes re-running over the same drop folders a no-op.
 """
 import hashlib
 import json
+import threading
 import traceback
 from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
 from .. import config
 from ..llm import ollama_client
+from ..log import get_logger
 from ..memory import profile as memory_profile
 from . import audio as audio_mod
 from . import chunking, sms, whatsapp
 from .models import Message
 
 StatusCb = Callable[[str], None]
+
+log = get_logger(__name__)
+
+# Set while whisper/pyannote own the GPU (chatting then would OOM the card).
+# The server only blocks chat during this window, not the whole ingest run.
+GPU_BUSY = threading.Event()
 
 
 def _sha256(path: Path) -> str:
@@ -74,6 +82,7 @@ def run_ingest(status: StatusCb = print) -> Dict[str, int]:
 
     # ---- Phase 1-3: audio (GPU) ----
     if audio_files:
+        GPU_BUSY.set()
         status("Freeing GPU memory (unloading LLM)…")
         ollama_client.unload()
         status("Loading speech models (first time can take a few minutes)…")
@@ -95,10 +104,12 @@ def run_ingest(status: StatusCb = print) -> Dict[str, int]:
                     counters["audio"] += 1
                 except Exception:
                     counters["errors"] += 1
+                    log.exception("Transcription failed for %s", f.name)
                     status(f"FAILED on {f.name}:\n{traceback.format_exc(limit=2)}")
         finally:
             status("Releasing speech models from GPU…")
             pipeline.close()
+            GPU_BUSY.clear()
 
     # ---- Phase 4a: parse text sources (CPU) ----
     for f in wa_files:
@@ -110,6 +121,7 @@ def run_ingest(status: StatusCb = print) -> Dict[str, int]:
             counters["whatsapp"] += 1
         except Exception:
             counters["errors"] += 1
+            log.exception("WhatsApp parse failed for %s", f.name)
             status(f"FAILED on {f.name}:\n{traceback.format_exc(limit=2)}")
 
     for f in sms_files:
@@ -121,6 +133,7 @@ def run_ingest(status: StatusCb = print) -> Dict[str, int]:
             counters["sms"] += 1
         except Exception:
             counters["errors"] += 1
+            log.exception("SMS parse failed for %s", f.name)
             status(f"FAILED on {f.name}:\n{traceback.format_exc(limit=2)}")
 
     # ---- Phase 4b: chunk + embed (CPU) + store ----
@@ -167,6 +180,7 @@ def run_ingest(status: StatusCb = print) -> Dict[str, int]:
                     memory_profile.extract_from_conversation(label, convo)
                 except Exception:
                     counters["errors"] += 1
+                    log.exception("Profile extraction failed for %s", label)
         else:
             status("Ollama is not running — skipping profile update (data is still indexed).")
 

@@ -110,7 +110,8 @@ class AudioPipeline:
         if self.diarizer is not None:
             kwargs = {"num_speakers": self.num_speakers} if self.num_speakers else {}
             diarization = self.diarizer(str(wav), **kwargs)
-            turns = [(t.start, t.end, spk) for t, _, spk in diarization.itertracks(yield_label=True)]
+            turns = [(t.start, t.end, spk)
+                     for t, _, spk in diarization.itertracks(yield_label=True)]
 
         utterances: List[Utterance] = []
         for w in words:

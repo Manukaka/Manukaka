@@ -11,16 +11,37 @@ from pydantic import BaseModel
 from . import config
 from .ingestion import runner
 from .llm import ollama_client, prompts
+from .log import get_logger
 from .memory import profile as memory_profile
+
+log = get_logger(__name__)
 
 app = FastAPI(title="Manu")
 
 
 class IngestState:
     def __init__(self):
-        self.running = False
+        self._running = False
         self.log: List[str] = []
         self.lock = threading.Lock()
+
+    @property
+    def running(self) -> bool:
+        with self.lock:
+            return self._running
+
+    def try_start(self) -> bool:
+        """Atomically claim the ingest slot; False if a run is already active."""
+        with self.lock:
+            if self._running:
+                return False
+            self._running = True
+            self.log = ["Starting…"]
+            return True
+
+    def finish(self) -> None:
+        with self.lock:
+            self._running = False
 
     def status_cb(self, msg: str):
         with self.lock:
@@ -48,7 +69,7 @@ def health():
     try:
         chunks = store.count()
     except Exception:
-        pass
+        log.exception("Could not read the vector store for /api/health")
     return {
         "ollama": ollama_client.is_up(),
         "model": config.CFG["llm"]["model"],
@@ -60,18 +81,17 @@ def health():
 
 @app.post("/api/ingest")
 def ingest():
-    if STATE.running:
+    if not STATE.try_start():
         raise HTTPException(409, "Ingestion already running")
-    STATE.running = True
-    STATE.log = ["Starting…"]
 
     def work():
         try:
             runner.run_ingest(STATE.status_cb)
         except Exception as e:
+            log.exception("Ingestion crashed")
             STATE.status_cb(f"Ingestion failed: {e}")
         finally:
-            STATE.running = False
+            STATE.finish()
 
     threading.Thread(target=work, daemon=True).start()
     return {"started": True}
@@ -80,14 +100,15 @@ def ingest():
 @app.get("/api/status")
 def status():
     with STATE.lock:
-        return {"running": STATE.running, "log": list(STATE.log)}
+        return {"running": STATE._running, "log": list(STATE.log)}
 
 
 @app.post("/api/chat")
 def chat(req: ChatRequest):
-    if STATE.running:
-        # Whisper owns the GPU during ingestion; chatting now would OOM
-        raise HTTPException(409, "Please wait — I'm still processing your files.")
+    if runner.GPU_BUSY.is_set():
+        # Whisper owns the GPU during transcription; chatting now would OOM.
+        # Text parsing/embedding phases run on CPU, so chat stays available then.
+        raise HTTPException(409, "Please wait — I'm still transcribing your calls.")
     if not ollama_client.is_up():
         raise HTTPException(503, "Ollama is not running. Start Ollama and try again.")
 
@@ -102,7 +123,7 @@ def chat(req: ChatRequest):
         hits = retriever.retrieve(question)
         context_block = retriever.format_context(hits)
     except Exception:
-        pass
+        log.exception("Retrieval failed; answering without conversation context")
 
     system = prompts.build_system_prompt(memory_profile.load_profile_md(), context_block)
     turns = config.CFG["llm"]["chat_history_turns"]
@@ -117,6 +138,7 @@ def chat(req: ChatRequest):
                 yield f"data: {json.dumps({'delta': chunk})}\n\n"
             yield f"data: {json.dumps({'done': True})}\n\n"
         except Exception as e:
+            log.exception("Chat stream failed")
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
     return StreamingResponse(stream(), media_type="text/event-stream")

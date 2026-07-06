@@ -36,23 +36,24 @@ is merged to `main`.
 
 ## 2. Roadmap
 
-### Phase 1 — Strong foundations (code hardening) ← **do this first**
+### Phase 1 — Strong foundations (code hardening) — **done**
 
-1. **CI pipeline**: GitHub Actions running `pytest`, `ruff` (lint + format), and
-   `mypy` on every push/PR. Add `ruff` + `mypy` configs.
-2. **Logging**: standard `logging` throughout, rotating file log in `data/logs/`,
-   surfaced errors in the UI header instead of silent `pass`.
-3. **Test expansion**:
+1. ✅ **CI pipeline**: GitHub Actions running `ruff` + `pytest` on every push/PR
+   (`.github/workflows/ci.yml`, light `requirements-dev.txt`). `mypy` deferred.
+2. ✅ **Logging**: `assistant/log.py` — console + rotating file in `data/logs/`;
+   every previously-silent `except` now logs the traceback.
+3. ✅ **Test expansion** (6 → 34 tests):
    - `retriever` (recency boost math, context formatting) with a fake store
    - `memory/profile` (extract/merge/render) with a mocked Ollama client
    - `server` endpoints via FastAPI `TestClient` (health, ingest 409, chat 4xx paths)
-   - `runner` manifest logic (skip already-seen files, error counting)
-4. **Config validation**: pydantic model for `config.yaml` with friendly
-   startup errors and documented defaults.
-5. **Profile safety**: timestamped backup of `profile.json` before every merge;
-   keep last N backups.
-6. **Concurrency fixes**: lock all `STATE` mutations; only block chat during the
-   GPU (audio) phase, not during CPU parsing/embedding.
+   - `runner` manifest logic + a text-source ingest run with a fake embedder
+   - `config` validation errors
+4. ✅ **Config validation**: pydantic models for `config.yaml`; typos and wrong
+   types fail at startup with the offending key named.
+5. ✅ **Profile safety**: timestamped backup of `profile.json` before every LLM
+   merge (`data/profile/backups/`, last 10 kept).
+6. ✅ **Concurrency fixes**: `STATE` mutations locked; chat now blocks only
+   while whisper owns the GPU, not during CPU parsing/embedding phases.
 
 ### Phase 2 — Retrieval quality (answers get noticeably smarter)
 
