@@ -55,17 +55,19 @@ is merged to `main`.
 6. ✅ **Concurrency fixes**: `STATE` mutations locked; chat now blocks only
    while whisper owns the GPU, not during CPU parsing/embedding phases.
 
-### Phase 2 — Retrieval quality (answers get noticeably smarter)
+### Phase 2 — Retrieval quality (answers get noticeably smarter) — **done**
 
-1. **Hybrid search**: BM25 keyword search alongside vector search, merged with
-   reciprocal-rank fusion — big win for names, amounts, and code-switched
-   Marathi/Hinglish where embeddings are weakest.
-2. **Metadata filtering**: detect contact names and date ranges in the question
-   ("last week", "with Rahul") and filter/boost accordingly.
-3. **Query rewriting**: one cheap LLM pass to expand the user's question into
-   better search queries (handles pronouns and follow-up questions).
-4. **Citations**: show which conversation/date each part of the answer came from,
-   clickable to open the transcript.
+1. ✅ **Hybrid search**: pure-Python BM25 (`rag/keyword.py`, no new deps) fused
+   with vector search via reciprocal-rank fusion — big win for names, amounts,
+   and code-switched Marathi/Hinglish where embeddings are weakest.
+2. ✅ **Metadata boosting** (`rag/query_analysis.py`): contact names and time
+   phrases ("last week", "गेल्या आठवड्यात", "पिछले महीने") detected in the
+   question boost matching chunks (boost, not hard-filter, on purpose).
+3. ✅ **Query rewriting** (`rag/rewrite.py`): one LLM pass turns follow-up
+   questions into standalone search queries; any failure falls back silently.
+4. ✅ **Citations**: excerpts are numbered, the model cites [n] inline, and the
+   UI shows a sources footer under each answer (only excerpts actually cited).
+   Clickable transcript view moves to Phase 5's transcript browser.
 
 ### Phase 3 — Memory that acts like memory
 

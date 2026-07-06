@@ -66,6 +66,22 @@ def test_chat_streams_sse_deltas(client, monkeypatch):
     assert '"done": true' in r.text
 
 
+def test_chat_emits_sources_event_before_done(client, monkeypatch):
+    from assistant.rag import retriever
+    hit = {"text": "excerpt", "score": 1.0,
+           "metadata": {"contact": "Aai", "source_type": "whatsapp",
+                        "source_file": "chat.txt", "start_ts": 0, "end_ts": 0}}
+    monkeypatch.setattr(ollama_client, "is_up", lambda: True)
+    monkeypatch.setattr(ollama_client, "chat_stream", lambda messages: iter(["hi [1]"]))
+    monkeypatch.setattr(retriever, "retrieve", lambda q, h=None: [hit])
+
+    r = client.post("/api/chat", json={"message": "hi"})
+    assert r.status_code == 200
+    assert '"sources"' in r.text
+    assert '"n": 1' in r.text
+    assert r.text.index('"sources"') < r.text.index('"done"')
+
+
 def test_ingest_rejects_concurrent_runs(client, monkeypatch):
     release = threading.Event()
     monkeypatch.setattr(runner, "run_ingest", lambda status: release.wait(timeout=5))

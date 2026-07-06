@@ -64,6 +64,11 @@ class RagConfig(_Strict):
     top_k_fetch: int = 10
     top_k_use: int = 6
     recency_boost: float = 0.1
+    hybrid: bool = True            # BM25 keyword search fused with vector search
+    rrf_k: int = 60                # reciprocal-rank-fusion constant
+    contact_boost: float = 0.3     # boost when the question names the chunk's contact
+    date_boost: float = 0.3        # boost when the question points at the chunk's time window
+    query_rewrite: bool = True     # LLM-rewrite follow-up questions into standalone queries
 
 
 class ProfileConfig(_Strict):

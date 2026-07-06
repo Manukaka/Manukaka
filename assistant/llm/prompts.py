@@ -20,6 +20,9 @@ def build_system_prompt(profile_md: str, context_block: str) -> str:
         parts.append(
             "\n## Relevant excerpts from the user's data\n"
             "(retrieved for the current question — quote or use them when answering)\n"
+            "Each excerpt is numbered. When your answer uses an excerpt, cite it "
+            "inline with its number in square brackets, e.g. [1] or [2][3]. "
+            "Do not cite excerpts you did not use.\n\n"
             + context_block.strip()
         )
     return "\n".join(parts)

@@ -116,18 +116,21 @@ def chat(req: ChatRequest):
     if not question:
         raise HTTPException(400, "Empty message")
 
+    turns = config.CFG["llm"]["chat_history_turns"]
+    history = (req.history or [])[-(turns * 2):]
+
     # RAG: retrieve relevant excerpts (works even with an empty index)
     context_block = ""
+    sources: List[dict] = []
     try:
         from .rag import retriever
-        hits = retriever.retrieve(question)
+        hits = retriever.retrieve(question, history)
         context_block = retriever.format_context(hits)
+        sources = retriever.sources(hits)
     except Exception:
         log.exception("Retrieval failed; answering without conversation context")
 
     system = prompts.build_system_prompt(memory_profile.load_profile_md(), context_block)
-    turns = config.CFG["llm"]["chat_history_turns"]
-    history = (req.history or [])[-(turns * 2):]
     messages = [{"role": "system", "content": system}]
     messages += [{"role": m["role"], "content": m["content"]} for m in history]
     messages.append({"role": "user", "content": question})
@@ -136,6 +139,8 @@ def chat(req: ChatRequest):
         try:
             for chunk in ollama_client.chat_stream(messages):
                 yield f"data: {json.dumps({'delta': chunk})}\n\n"
+            if sources:
+                yield f"data: {json.dumps({'sources': sources})}\n\n"
             yield f"data: {json.dumps({'done': True})}\n\n"
         except Exception as e:
             log.exception("Chat stream failed")

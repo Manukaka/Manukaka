@@ -30,6 +30,17 @@ function renderMd(el, text) {
   el.innerHTML = safe;
 }
 
+// Sources footer under an answer: only the excerpts the model actually
+// cited as [n]; if it cited nothing, stay quiet rather than list guesses.
+function addSources(bubble, sources, answer) {
+  const cited = sources.filter((s) => answer.includes("[" + s.n + "]"));
+  if (!cited.length) return;
+  const box = document.createElement("div");
+  box.className = "sources";
+  box.textContent = "📎 " + cited.map((s) => "[" + s.n + "] " + s.label).join(" · ");
+  bubble.appendChild(box);
+}
+
 async function send() {
   const text = inputEl.value.trim();
   if (!text || busy) return;
@@ -67,6 +78,7 @@ async function send() {
           renderMd(bubble, answer);
           chatEl.scrollTop = chatEl.scrollHeight;
         }
+        if (data.sources) addSources(bubble, data.sources, answer);
         if (data.error) bubble.textContent = "Error: " + data.error;
       }
     }

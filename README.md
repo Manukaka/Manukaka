@@ -88,6 +88,13 @@ SMS .xml ─────── parser ──────────────
 you ⇄ desktop window (pywebview) ⇄ FastAPI ⇄ Ollama (qwen3:8b) ◄── profile.md + relevant excerpts
 ```
 
+- Retrieval is **hybrid**: a BM25 keyword search runs next to the vector search
+  and the two result lists are fused — names, amounts, and Hinglish phrases are
+  found even when embeddings miss them. Questions that name a contact or a time
+  window ("last week", "गेल्या आठवड्यात") boost matching conversations, and
+  answers cite their sources ([1], [2]) with the conversation and date shown
+  under the reply.
+
 - One 8 GB GPU runs everything by **taking turns**: the chat model is unloaded
   while Whisper transcribes, then reloaded for chatting.
 - `python scripts\ingest_cli.py` runs the same processing from a terminal.
