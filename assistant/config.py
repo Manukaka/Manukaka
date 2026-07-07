@@ -83,6 +83,7 @@ class AppConfig(_Strict):
     host: str = "127.0.0.1"
     port: int = 8765
     window_title: str = "Manu — Personal Assistant"
+    auto_ingest: bool = False  # watch the ingest folders and process new files automatically
 
 
 class Config(_Strict):

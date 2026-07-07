@@ -90,12 +90,11 @@ is merged to `main`.
 2. ✅ **Voice notes**: `ingest/audio/` already accepts `.opus`/`.m4a` — drop
    exported WhatsApp/Telegram voice notes there and they go through Whisper.
    *(No code needed; documented.)*
-3. ⬜ **Watch folders** — sub-plan:
-   - a `watchdog`-free polling thread (10 s) started from `app.py`, guarded by
-     a new `app.auto_ingest: false` config flag (off by default: auto-ingest
-     unloads the LLM mid-chat, so it must be a choice)
-   - only trigger when file sizes are stable across two polls (copy finished)
-   - reuse `STATE.try_start()` so manual + auto ingest can never overlap
+3. ✅ **Watch folders** (`ingestion/watcher.py`): 10-second polling thread,
+   started from the server lifespan when `app.auto_ingest: true` (off by
+   default — auto-ingest unloads the LLM, so it must be a choice). Only
+   triggers when file sizes are stable across two polls (copy finished) and
+   reuses `STATE.try_start()` so manual + auto ingest can never overlap.
 4. ⬜ **Email** (`.eml`/mbox) parser — sub-plan: stdlib `email` + `mailbox`
    modules, contact = counterpart address's display name, thread → session;
    needs a fixture set (plain, HTML-only, and Devanagari subject cases).
@@ -108,10 +107,10 @@ is merged to `main`.
 2. ⬜ **Named conversations** — sub-plan: `conversations` table + `conv_id`
    column, `GET/POST /api/conversations`, a left sidebar in the UI, and
    "new chat" resets context without deleting history.
-3. ⬜ **Transcript browser** — sub-plan: `GET /api/transcripts` (list) and
-   `GET /api/transcripts/{stem}` (text) reading `data/transcripts/`; make the
-   citation chips in the sources footer clickable to open the transcript in
-   the info panel.
+3. ✅ **Transcript browser**: `GET /api/transcripts` (list) and
+   `GET /api/transcripts/{stem}` (text, lookup restricted to real transcript
+   files so path traversal is impossible); call-source citation chips in the
+   sources footer are clickable and open the transcript in the info panel.
 4. ⬜ **Packaging** — sub-plan: PyInstaller one-dir build of `assistant.app`,
    models still downloaded on first run (they cannot be bundled), an Inno
    Setup script for a real installer, and a tray icon (`pystray`) + Startup
@@ -123,8 +122,7 @@ Phase 1 is the multiplier — every later feature lands faster and safer on top
 of CI + tests + logging. Phases 2 and 3 deliver the most user-visible
 intelligence gains. Phases 4 and 5 can be interleaved based on need.
 
-Remaining items, in suggested order: transcript browser (5.3, small and makes
-citations tangible) → watch folders (4.3) → named conversations (5.2) →
+Remaining items, in suggested order: named conversations (5.2) →
 email parser (4.4) → packaging (5.4, needs Windows).
 
 Each remaining item should land as its own small PR with tests.

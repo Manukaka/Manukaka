@@ -2,6 +2,7 @@
 import json
 import threading
 import time
+from contextlib import asynccontextmanager
 from typing import List, Optional
 
 from fastapi import FastAPI, HTTPException
@@ -18,7 +19,17 @@ from .memory import profile as memory_profile
 
 log = get_logger(__name__)
 
-app = FastAPI(title="Manu")
+
+@asynccontextmanager
+async def lifespan(_app):
+    if config.CFG["app"]["auto_ingest"]:
+        from .ingestion import watcher
+        watcher.start(STATE, runner.run_ingest)
+        log.info("Folder watcher started (app.auto_ingest: true)")
+    yield
+
+
+app = FastAPI(title="Manu", lifespan=lifespan)
 
 
 class IngestState:
@@ -161,6 +172,30 @@ def contacts():
     for p in out:
         p["sources"] = sorted(p["sources"])
     return {"contacts": out}
+
+
+@app.get("/api/transcripts")
+def transcripts():
+    """Call transcripts written by the audio pipeline, newest first."""
+    items = []
+    if config.TRANSCRIPTS_DIR.exists():
+        for p in config.TRANSCRIPTS_DIR.glob("*.txt"):
+            st = p.stat()
+            items.append({"stem": p.stem, "modified": st.st_mtime, "size": st.st_size})
+    items.sort(key=lambda t: t["modified"], reverse=True)
+    return {"transcripts": items}
+
+
+@app.get("/api/transcripts/{stem}")
+def transcript(stem: str):
+    # Lookup restricted to actual files in the transcripts folder — a stem like
+    # "../../secret" can never resolve to anything outside it.
+    known = ({p.stem: p for p in config.TRANSCRIPTS_DIR.glob("*.txt")}
+             if config.TRANSCRIPTS_DIR.exists() else {})
+    path = known.get(stem)
+    if path is None:
+        raise HTTPException(404, "Transcript not found")
+    return {"stem": stem, "text": path.read_text(encoding="utf-8")}
 
 
 class DigestRequest(BaseModel):

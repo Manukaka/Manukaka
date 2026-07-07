@@ -107,7 +107,8 @@ def test_sources_match_context_numbering():
     ts = datetime(2024, 5, 13, 9, 0).timestamp()
     hits = [_hit(1.0, ts, contact="Aai", source_file="chat.txt")]
     assert retriever.sources(hits) == [
-        {"n": 1, "label": "WhatsApp with Aai, 13 May 2024", "file": "chat.txt"}
+        {"n": 1, "label": "WhatsApp with Aai, 13 May 2024",
+         "file": "chat.txt", "type": "whatsapp"}
     ]
 
 

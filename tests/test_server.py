@@ -133,6 +133,24 @@ def test_contacts_endpoint_aggregates_index_and_profile(client, monkeypatch, tmp
     assert any("Goa" in f for f in rahul["facts"])
 
 
+def test_transcripts_list_and_read(client, tmp_data_dirs):
+    from assistant import config
+    config.TRANSCRIPTS_DIR.mkdir(parents=True, exist_ok=True)
+    (config.TRANSCRIPTS_DIR / "Call with Aai_240513.txt").write_text(
+        "[SPEAKER_00] नमस्कार\n[SPEAKER_01] बोला", encoding="utf-8")
+
+    listing = client.get("/api/transcripts").json()["transcripts"]
+    assert [t["stem"] for t in listing] == ["Call with Aai_240513"]
+
+    body = client.get("/api/transcripts/Call%20with%20Aai_240513").json()
+    assert "नमस्कार" in body["text"]
+
+
+def test_transcript_traversal_and_missing_are_404(client, tmp_data_dirs):
+    assert client.get("/api/transcripts/nope").status_code == 404
+    assert client.get("/api/transcripts/..%2F..%2Fconfig").status_code == 404
+
+
 def test_digest_endpoint_summarizes_recent_chunks(client, monkeypatch):
     import time as _time
 

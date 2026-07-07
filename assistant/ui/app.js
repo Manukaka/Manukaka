@@ -32,13 +32,39 @@ function renderMd(el, text) {
 
 // Sources footer under an answer: only the excerpts the model actually
 // cited as [n]; if it cited nothing, stay quiet rather than list guesses.
+// Call sources are clickable and open their transcript.
 function addSources(bubble, sources, answer) {
   const cited = sources.filter((s) => answer.includes("[" + s.n + "]"));
   if (!cited.length) return;
   const box = document.createElement("div");
   box.className = "sources";
-  box.textContent = "📎 " + cited.map((s) => "[" + s.n + "] " + s.label).join(" · ");
+  box.append("📎 ");
+  cited.forEach((s, i) => {
+    if (i) box.append(" · ");
+    const chip = document.createElement("span");
+    chip.textContent = "[" + s.n + "] " + s.label;
+    if (s.type === "call" && s.file) {
+      chip.className = "source-link";
+      chip.title = "Open the call transcript";
+      chip.addEventListener("click", () => openTranscript(s.file));
+    }
+    box.appendChild(chip);
+  });
   bubble.appendChild(box);
+}
+
+async function openTranscript(file) {
+  const stem = file.replace(/\.[^.]+$/, "");
+  showInfo("Loading transcript…");
+  try {
+    const res = await fetch("/api/transcripts/" + encodeURIComponent(stem));
+    if (!res.ok) { showInfo("Transcript not found."); return; }
+    const data = await res.json();
+    showInfo("<h3>📞 " + esc(stem) + "</h3><pre class='transcript'>" +
+      esc(data.text) + "</pre>");
+  } catch (e) {
+    showInfo("⚠ " + esc(e.message));
+  }
 }
 
 async function send() {

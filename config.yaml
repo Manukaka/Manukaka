@@ -45,3 +45,5 @@ app:
   host: "127.0.0.1"
   port: 8765
   window_title: "Manu — Personal Assistant"
+  auto_ingest: false           # true = watch the ingest folders and process new files
+                               # automatically (transcribing calls pauses chat while it runs)

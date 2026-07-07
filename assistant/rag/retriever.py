@@ -102,7 +102,9 @@ def format_context(hits: List[Dict]) -> str:
 
 
 def sources(hits: List[Dict]) -> List[Dict]:
-    """What the UI shows under the answer, in the same order as the [n] markers."""
+    """What the UI shows under the answer, in the same order as the [n] markers.
+    `type` lets the UI link call sources to their transcript."""
     return [{"n": n, "label": _label(h["metadata"]),
-             "file": h["metadata"].get("source_file", "")}
+             "file": h["metadata"].get("source_file", ""),
+             "type": h["metadata"].get("source_type", "")}
             for n, h in enumerate(hits, 1)]

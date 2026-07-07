@@ -50,6 +50,9 @@ button.secondary {
 #infoPanel .fact { color: var(--muted); font-size: 13px; padding: 2px 0 2px 14px; }
 #infoPanel .muted { color: var(--muted); }
 #infoPanel #infoClose { margin-top: 10px; }
+#infoPanel .transcript { white-space: pre-wrap; font-size: 13px; font-family: inherit; }
+.source-link { color: var(--accent); cursor: pointer; }
+.source-link:hover { text-decoration: underline; }
 
 main#chat { flex: 1; overflow-y: auto; padding: 18px; display: flex; flex-direction: column; gap: 12px; }
 .msg { display: flex; }
