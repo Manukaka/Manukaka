@@ -1,0 +1,7 @@
+<resources>
+    <style name="Theme.ManuMobile" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/manu_primary</item>
+        <item name="colorPrimaryVariant">@color/manu_primary_dark</item>
+        <item name="colorSecondary">@color/manu_accent</item>
+    </style>
+</resources>
