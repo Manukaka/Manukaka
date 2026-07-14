@@ -102,10 +102,19 @@ Common fixes:
 | `accessibility/ScreenCapturer.kt` | screenshot (MediaProjection) for the vision fallback |
 | `voice/VoiceInput.kt`, `voice/Speaker.kt` | on-device speech-to-text and text-to-speech |
 
-## Notes & limits (Phase 1)
+## Hands-free (experimental)
+Flip the **"Hands-free — Manu म्हणा"** switch and just say **"Manu, …"** followed by
+your command (e.g. *"Manu, Settings उघड"*). It uses the on-device recogniser in a
+loop, so it's battery-hungry and best treated as a trial feature; a dedicated
+wake-word engine is a later step. Hands-free triggers run **text-only** (the vision
+fallback needs a tap to grant screen capture), so use the button for picture-only
+screens.
+
+## Notes & limits (Phase 2)
 - **Vision fallback is on:** when a screen's text view is sparse (or a tap keeps
   failing), Manu attaches a downscaled screenshot so Claude can "see" it. Text-first
   otherwise, to keep cost low.
-- A usage dashboard, hands-free wake word, and per-app recipes come in Phase 2.
-- The wake word is a button tap for now.
+- **Per-app recipes** on the backend make WhatsApp / Chrome / Messages / Settings /
+  Phone flows more reliable.
+- **Usage & cost:** open the backend's `/dashboard` to see tokens and estimated spend.
 - Everything Manu "says" is in the language you spoke.

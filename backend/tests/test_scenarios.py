@@ -148,7 +148,7 @@ def mock_complete(model: str, system: str, user_turn: str, screenshot_b64):
 
     # ---- read screen ----
     if any(k in goal for k in ("वाच", "read", "काय आहे")):
-        if has("read_aloud"):
+        if has("read_aloud:"):
             return '{"type": "done", "say": "एवढंच होतं."}'
         return '{"type": "read_aloud", "say": "स्क्रीनवर दोन नोंदी आहेत: उद्या ऑफिसला जायचं आणि दूध आणायचं."}'
 
@@ -157,7 +157,7 @@ def mock_complete(model: str, system: str, user_turn: str, screenshot_b64):
         if "com.android.chrome" not in user_turn:
             return '{"type": "open_app", "app": "Chrome"}'
         if "Google" in user_turn or "३२" in user_turn:
-            if has("read_aloud"):
+            if has("read_aloud:"):
                 return '{"type": "done", "say": "झालं."}'
             return '{"type": "read_aloud", "say": "आज ३२ अंश, सूर्यप्रकाश आहे."}'
         if "typing" in user_turn:

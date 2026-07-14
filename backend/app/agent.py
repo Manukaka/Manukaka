@@ -7,13 +7,23 @@ from __future__ import annotations
 
 import json
 import re
-from typing import List, Optional
+from dataclasses import dataclass
+from typing import List, Optional, Tuple, Union
 
 from .config import settings
 from .prompts import build_user_turn, system_prompt
+from .recipes import recipe_for
 from .schema import Action, ActionType, Observation, StepResponse
+from .usage import tracker
 
 _JSON_RE = re.compile(r"\{.*\}", re.DOTALL)
+
+
+@dataclass
+class CompletionResult:
+    text: str
+    # (input_tokens, output_tokens) when known, else None.
+    usage: Optional[Tuple[int, int]] = None
 
 # Signals that a routine text-only step should escalate to the smarter model.
 _HARD_KEYWORDS = ("pay", "payment", "transfer", "upi", "delete", "book", "buy", "order")
@@ -48,8 +58,9 @@ def choose_model(obs: Observation, goal: str, step_index: int) -> str:
     return settings.model_fast
 
 
-def _complete(model: str, system: str, user_turn: str, screenshot_b64: Optional[str]) -> str:
-    """Single Claude call. Returns the raw text response. Monkeypatched in tests."""
+def _complete(model: str, system: str, user_turn: str, screenshot_b64: Optional[str]) -> CompletionResult:
+    """Single Claude call. Returns text + token usage. Monkeypatched in tests
+    (tests may return a plain str; `decide` handles both)."""
     from anthropic import Anthropic
 
     client = Anthropic(api_key=settings.anthropic_api_key)
@@ -72,7 +83,11 @@ def _complete(model: str, system: str, user_turn: str, screenshot_b64: Optional[
         system=[{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}],
         messages=[{"role": "user", "content": content}],
     )
-    return "".join(block.text for block in msg.content if getattr(block, "type", None) == "text")
+    text = "".join(block.text for block in msg.content if getattr(block, "type", None) == "text")
+    usage = None
+    if getattr(msg, "usage", None) is not None:
+        usage = (int(msg.usage.input_tokens), int(msg.usage.output_tokens))
+    return CompletionResult(text=text, usage=usage)
 
 
 def _parse_action(raw: str) -> Action:
@@ -98,6 +113,7 @@ def decide(
     history: List[str],
     step_index: int,
     user_reply: Optional[str],
+    device_id: str = "unknown",
 ) -> StepResponse:
     # Budget guard: stop cleanly instead of running up cost forever.
     if step_index >= settings.max_steps_per_task:
@@ -119,7 +135,19 @@ def decide(
             "more, or use ask_user — do NOT repeat the same failing action."
         ]
 
-    user_turn = build_user_turn(goal, obs, history, user_reply)
-    raw = _complete(model, system_prompt(), user_turn, obs.screenshot_b64)
-    action = _parse_action(raw)
+    recipe = recipe_for(obs.app_package)
+    user_turn = build_user_turn(goal, obs, history, user_reply, recipe)
+    result: Union[str, CompletionResult] = _complete(
+        model, system_prompt(), user_turn, obs.screenshot_b64
+    )
+
+    # Tests may monkeypatch _complete to return a plain string; handle both.
+    if isinstance(result, CompletionResult):
+        text = result.text
+        if result.usage is not None:
+            tracker.record(device_id, model, result.usage[0], result.usage[1])
+    else:
+        text = result
+
+    action = _parse_action(text)
     return StepResponse(action=action, model_used=model)

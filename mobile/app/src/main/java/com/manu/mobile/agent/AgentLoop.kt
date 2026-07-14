@@ -53,8 +53,8 @@ class AgentLoop(
             var obs = ScreenReader.capture(service)
 
             // Vision fallback: attach a screenshot when text is sparse or we're stuck.
-            if ((wantScreenshot || obs.nodes.size < 3) && captureScreenshot != null) {
-                captureScreenshot.invoke()?.let { obs = obs.copy(screenshotB64 = it) }
+            if (wantScreenshot || obs.nodes.size < 3) {
+                captureScreenshot?.invoke()?.let { obs = obs.copy(screenshotB64 = it) }
             }
             wantScreenshot = false
 

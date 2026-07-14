@@ -40,6 +40,13 @@
                 android:inputType="textUri" />
         </com.google.android.material.textfield.TextInputLayout>
 
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/handsFreeSwitch"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/hands_free" />
+
         <com.google.android.material.button.MaterialButton
             android:id="@+id/talkButton"
             android:layout_width="200dp"

@@ -10,4 +10,6 @@
     <string name="backend_label">Backend URL</string>
     <string name="notif_channel">Manu Agent</string>
     <string name="notif_running">Manu तुमचं काम करत आहे…</string>
+    <string name="hands_free">Hands-free — \"Manu\" म्हणा (experimental)</string>
+    <string name="wake_listening">\"Manu\" ऐकत आहे…</string>
 </resources>

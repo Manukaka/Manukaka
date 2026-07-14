@@ -30,11 +30,29 @@ curl -s localhost:8080/agent/step -H 'content-type: application/json' -d '{
 }' | python3 -m json.tool
 ```
 
+## Usage & cost dashboard
+The backend tracks tokens and an **estimated** cost per device:
+- `GET /usage` — totals + per-device breakdown (JSON)
+- `GET /usage/{device_id}` — one device
+- `GET /dashboard` — a simple HTML table (open in a browser)
+
+Cost is estimated from an editable price table in `app/usage.py` — update it to match
+current Anthropic pricing. Token counts come straight from each Claude response.
+
+## Per-app recipes
+`app/recipes.py` holds short, per-app hints (WhatsApp, Chrome, Messages, Settings, …)
+that are injected into the prompt when Manu recognises the foreground app, making
+common flows more reliable and cheaper. Add an entry keyed by package substring to
+teach Manu a new app.
+
 ## Tests
 ```bash
 source .venv/bin/activate
 python -m pytest tests/ -q     # network is mocked; no API key needed
 ```
+`tests/test_scenarios.py` drives all four capabilities through the device-free
+simulation harness (`sim/virtual_phone.py`). Set `MANU_LIVE=1` with a real key to run
+the same scenarios against the actual model.
 
 ## The action contract (what the app must implement)
 See `app/schema.py`. Every step returns one `action`:

@@ -97,12 +97,20 @@ def _observation_text(obs: Observation) -> str:
     return "\n".join(lines)
 
 
-def build_user_turn(goal: str, obs: Observation, history: List[str], user_reply: str | None) -> str:
+def build_user_turn(
+    goal: str,
+    obs: Observation,
+    history: List[str],
+    user_reply: str | None,
+    recipe: str | None = None,
+) -> str:
     parts = [f"User's instruction: {goal}"]
     if history:
         parts.append("Actions so far:\n" + "\n".join(f"  - {h}" for h in history[-12:]))
     if user_reply:
         parts.append(f"The user just replied: {user_reply}")
+    if recipe:
+        parts.append("Tip for this app: " + recipe)
     parts.append("Current screen:\n" + _observation_text(obs))
     parts.append("What is the single next action?")
     return "\n\n".join(parts)

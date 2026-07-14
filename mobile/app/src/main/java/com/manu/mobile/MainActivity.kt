@@ -19,12 +19,14 @@ import com.manu.mobile.databinding.ActivityMainBinding
 import com.manu.mobile.service.AgentForegroundService
 import com.manu.mobile.service.AgentStatus
 import com.manu.mobile.voice.VoiceInput
+import com.manu.mobile.voice.WakeListener
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private val voice by lazy { VoiceInput(applicationContext) }
+    private var wakeListener: WakeListener? = null
 
     private val permissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { }
@@ -56,7 +58,51 @@ class MainActivity : AppCompatActivity() {
             setRunning(false)
         }
 
+        binding.handsFreeSwitch.setOnCheckedChangeListener { _, checked ->
+            onHandsFreeToggled(checked)
+        }
+
         observeStatus()
+    }
+
+    // ---- Hands-free (experimental wake word) ---------------------------------
+
+    private fun wake(): WakeListener =
+        wakeListener ?: WakeListener(applicationContext) { command ->
+            runOnUiThread { handleWake(command) }
+        }.also { wakeListener = it }
+
+    private fun onHandsFreeToggled(checked: Boolean) {
+        if (!checked) {
+            wakeListener?.stop()
+            binding.statusText.text = getString(R.string.tap_to_speak)
+            return
+        }
+        if (!ManuAccessibilityService.isEnabled) {
+            binding.handsFreeSwitch.isChecked = false
+            Toast.makeText(this, R.string.enable_accessibility, Toast.LENGTH_LONG).show()
+            startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+            return
+        }
+        binding.statusText.setText(R.string.wake_listening)
+        wake().start()
+    }
+
+    private fun handleWake(command: String?) {
+        // Hands-free triggers run text-only: screen-capture consent needs a tap, so we
+        // skip the vision fallback when there was no user interaction.
+        lifecycleScope.launch {
+            val goal = command?.takeIf { it.isNotBlank() } ?: run {
+                binding.statusText.setText(R.string.listening)
+                voice.listen()
+            }
+            if (goal.isNullOrBlank()) {
+                if (binding.handsFreeSwitch.isChecked) wake().start()
+                return@launch
+            }
+            binding.transcriptText.text = "🗣 $goal"
+            AgentForegroundService.start(this@MainActivity, goal)
+        }
     }
 
     private fun onTalk(prefs: android.content.SharedPreferences) {
@@ -90,7 +136,15 @@ class MainActivity : AppCompatActivity() {
 
     private fun observeStatus() {
         lifecycleScope.launch {
-            AgentStatus.running.collect { running -> setRunning(running) }
+            AgentStatus.running.collect { running ->
+                setRunning(running)
+                // Don't fight the task for the mic; resume wake-listening after it ends.
+                if (running) {
+                    wakeListener?.stop()
+                } else if (binding.handsFreeSwitch.isChecked) {
+                    wake().start()
+                }
+            }
         }
         lifecycleScope.launch {
             AgentStatus.status.collect { s -> if (s.isNotEmpty()) binding.statusText.text = s }
@@ -100,6 +154,11 @@ class MainActivity : AppCompatActivity() {
     private fun setRunning(running: Boolean) {
         binding.stopButton.isEnabled = running
         binding.talkButton.isEnabled = !running
+    }
+
+    override fun onDestroy() {
+        wakeListener?.stop()
+        super.onDestroy()
     }
 
     private fun requestNeededPermissions() {
