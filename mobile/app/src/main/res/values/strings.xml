@@ -1,0 +1,15 @@
+<resources>
+    <string name="app_name">Manu</string>
+    <string name="accessibility_description">Manu वापरकर्त्याच्या सूचनेनुसार स्क्रीन वाचतो आणि tap/type करून फोन चालवतो. (Lets Manu read the screen and tap/type on your behalf.)</string>
+
+    <string name="tap_to_speak">बोलण्यासाठी दाबा</string>
+    <string name="listening">ऐकत आहे…</string>
+    <string name="thinking">विचार करत आहे…</string>
+    <string name="stop">थांबा</string>
+    <string name="enable_accessibility">Manu ला Accessibility परवानगी द्या</string>
+    <string name="backend_label">Backend URL</string>
+    <string name="notif_channel">Manu Agent</string>
+    <string name="notif_running">Manu तुमचं काम करत आहे…</string>
+    <string name="hands_free">Hands-free — \"Manu\" म्हणा (experimental)</string>
+    <string name="wake_listening">\"Manu\" ऐकत आहे…</string>
+</resources>

@@ -8,6 +8,12 @@ window. **Nothing ever leaves your computer.**
 
 Built for: Windows 11, NVIDIA RTX 4060 (8 GB), Intel i7, 16 GB+ RAM.
 
+> **Looking for the phone app?** A separate, cloud-powered **voice agent for
+> Android** (open apps, tap/type, browse, read the screen aloud — all by voice) is
+> being built under [`mobile/`](mobile/) with its Claude proxy in
+> [`backend/`](backend/). It's a different architecture from this offline desktop
+> assistant; see [`mobile/README.md`](mobile/README.md) to build and sideload it.
+
 ---
 
 ## 1. One-time setup (needs internet ONCE)
