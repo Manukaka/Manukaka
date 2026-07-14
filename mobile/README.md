@@ -55,18 +55,40 @@ If your backend requires the shared secret, also pass
    ```
    (or just copy the APK to the phone and tap it to sideload).
 
-### 4. First run — grant the two things Manu needs
+### 4. First run — grant the things Manu needs
 1. Open **Manu**. Allow the **microphone** (and notifications) prompt.
 2. Tap **"Manu ला Accessibility परवानगी द्या"** → in the list enable **Manu** →
    accept the warning. This is what lets Manu see and operate other apps.
 3. Make sure the **Backend URL** field shows your backend address.
+4. The first time you start a task you'll also see a **"Start recording / casting
+   with Manu?"** system dialog — that's the **screen-capture** used only as a vision
+   fallback when the text view of a screen isn't enough. Tap **Start now**. (You can
+   decline; Manu then runs text-only and just won't "see" picture-only screens.)
 
-### 5. Try it
-Tap the big **बोलण्यासाठी दाबा** (tap to speak) button and say something like:
-- *"Settings उघड"*
-- *"Chrome मध्ये आजचं हवामान शोध आणि सांग"*
-- *"स्क्रीनवर काय आहे ते वाच"*
-- *"WhatsApp मध्ये आईला मेसेज कर 'मी निघालो'"* → Manu will confirm before sending.
+### 5. Try it — smoke test (this is the real end-to-end check)
+Tap the big **बोलण्यासाठी दाबा** (tap to speak) button and run each of these once.
+Tick them off — this is the on-device acceptance test (it can only be done on a real
+phone, not in CI):
+
+| Capability | Say | Expected |
+|---|---|---|
+| Open app + control | *"Settings उघड"* | Settings opens; Manu says it's done |
+| Read screen aloud | *"स्क्रीनवर काय आहे ते वाच"* | Manu speaks a summary of the screen |
+| Web search | *"Chrome मध्ये आजचं हवामान शोध आणि सांग"* | Chrome opens, searches, reads the result |
+| Send message (with confirm) | *"WhatsApp मध्ये आईला मेसेज कर 'मी निघालो'"* | Manu types it, then **asks "पाठवू का?"** and only sends after you say *"हो"* |
+
+### 6. If a task gets stuck — diagnosing with logcat
+Manu narrates each step in the status line, but for detail:
+```bash
+adb logcat | grep -iE "manu|AccessibilityService|MediaProjection"
+```
+Common fixes:
+- **Nothing happens / "Accessibility off"** → re-enable Manu under
+  Settings ▸ Accessibility (Samsung sometimes revokes it after updates).
+- **Manu keeps retrying the same tap** → it will attach a screenshot and try another
+  element after two failures; if it still can't, it asks you what to do.
+- **"Server शी संपर्क होत नाही"** → the Backend URL is wrong/unreachable from the
+  phone; confirm the phone and backend are on the same network (or use a public URL).
 
 ## Project layout
 | Path | What it does |
@@ -77,10 +99,13 @@ Tap the big **बोलण्यासाठी दाबा** (tap to speak) bu
 | `agent/BackendClient.kt` | talks to `/agent/step` (no API key on device) |
 | `accessibility/ScreenReader.kt` | turns the live screen into an observation |
 | `accessibility/Actuator.kt` | performs taps / swipes / typing / back / home |
+| `accessibility/ScreenCapturer.kt` | screenshot (MediaProjection) for the vision fallback |
 | `voice/VoiceInput.kt`, `voice/Speaker.kt` | on-device speech-to-text and text-to-speech |
 
-## Notes & limits (Phase 0)
-- Screenshot/vision fallback, model-routing polish, a usage dashboard, and per-app
-  recipes come in later phases (see the root plan). Phase 0 is a working skeleton.
-- The wake word is a button tap for now; hands-free wake word is a later phase.
+## Notes & limits (Phase 1)
+- **Vision fallback is on:** when a screen's text view is sparse (or a tap keeps
+  failing), Manu attaches a downscaled screenshot so Claude can "see" it. Text-first
+  otherwise, to keep cost low.
+- A usage dashboard, hands-free wake word, and per-app recipes come in Phase 2.
+- The wake word is a button tap for now.
 - Everything Manu "says" is in the language you spoke.

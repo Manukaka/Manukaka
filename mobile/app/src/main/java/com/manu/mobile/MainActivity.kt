@@ -1,13 +1,16 @@
 package com.manu.mobile
 
 import android.Manifest
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
@@ -24,7 +27,14 @@ class MainActivity : AppCompatActivity() {
     private val voice by lazy { VoiceInput(applicationContext) }
 
     private val permissionLauncher =
-        registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions()) { }
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { }
+
+    // Screen-capture consent for the vision fallback. Denial is fine — text-only mode.
+    private val projectionLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            val data = if (result.resultCode == Activity.RESULT_OK) result.data else null
+            startTask(result.resultCode, data)
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -59,6 +69,13 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
+        // Ask for screen-capture consent (for the vision fallback). The result
+        // callback then captures the spoken goal and starts the task.
+        val mpm = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+        projectionLauncher.launch(mpm.createScreenCaptureIntent())
+    }
+
+    private fun startTask(projectionCode: Int, projectionData: Intent?) {
         binding.statusText.setText(R.string.listening)
         lifecycleScope.launch {
             val goal = voice.listen()
@@ -67,7 +84,7 @@ class MainActivity : AppCompatActivity() {
                 return@launch
             }
             binding.transcriptText.text = "🗣 $goal"
-            AgentForegroundService.start(this@MainActivity, goal)
+            AgentForegroundService.start(this@MainActivity, goal, projectionCode, projectionData)
         }
     }
 

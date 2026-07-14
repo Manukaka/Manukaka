@@ -13,6 +13,10 @@ import kotlinx.coroutines.withContext
 /**
  * The observe -> ask backend -> act loop. Given a spoken goal it drives the phone
  * until the task is done, the user is asked something, or a budget/safety limit hits.
+ *
+ * Hardening (Phase 1): attaches a screenshot when the accessibility tree is too
+ * sparse or the last action failed (vision fallback), verifies that opening an app
+ * actually changed the screen, and avoids blindly repeating a failed action.
  */
 class AgentLoop(
     private val context: Context,
@@ -20,6 +24,7 @@ class AgentLoop(
     private val voice: VoiceInput,
     private val speaker: Speaker,
     private val deviceId: String,
+    private val captureScreenshot: (() -> String?)? = null,
     private val onStatus: (String) -> Unit,
 ) {
     private val maxSteps = 40
@@ -40,10 +45,18 @@ class AgentLoop(
         val history = ArrayList<String>()
         var pendingReply: String? = null
         var step = 0
+        var wantScreenshot = false
+        var failStreak = 0
 
         while (step < maxSteps) {
             onStatus("thinking… (step ${step + 1})")
-            val obs = ScreenReader.capture(service)
+            var obs = ScreenReader.capture(service)
+
+            // Vision fallback: attach a screenshot when text is sparse or we're stuck.
+            if ((wantScreenshot || obs.nodes.size < 3) && captureScreenshot != null) {
+                captureScreenshot.invoke()?.let { obs = obs.copy(screenshotB64 = it) }
+            }
+            wantScreenshot = false
 
             val action = try {
                 backend.step(deviceId, goal, obs, step, history, pendingReply)
@@ -73,6 +86,7 @@ class AgentLoop(
                 history.add("user confirmed: $question")
             }
 
+            var failed = false
             when (action.type) {
                 AgentAction.DONE -> {
                     action.say?.let { speaker.speak(it) }
@@ -94,19 +108,30 @@ class AgentLoop(
                 }
 
                 AgentAction.OPEN_APP -> {
+                    val before = obs.appPackage
                     val ok = action.app?.let { AppLauncher.launch(context, it) } ?: false
+                    if (ok) waitForScreenChange(service, before)
                     history.add("open_app ${action.app} -> ${if (ok) "ok" else "not found"}")
-                    if (!ok) speaker.speak("${action.app} सापडलं नाही.")
+                    if (!ok) {
+                        failed = true
+                        speaker.speak("${action.app} सापडलं नाही.")
+                    }
                 }
 
                 AgentAction.TAP -> {
                     val node = action.nodeId?.let { id -> obs.nodes.firstOrNull { it.id == id } }
                     val ok = node?.let { Actuator.tap(service, it.bounds) } ?: false
+                    failed = !ok
                     history.add("tap ${action.nodeId} -> ${if (ok) "ok" else "fail"}")
                 }
 
                 AgentAction.TYPE_TEXT -> {
+                    // If a field id came with the type action, focus it first.
+                    action.nodeId?.let { id ->
+                        obs.nodes.firstOrNull { it.id == id }?.let { Actuator.tap(service, it.bounds); delay(300) }
+                    }
                     val ok = action.text?.let { Actuator.typeText(service, it) } ?: false
+                    failed = !ok
                     history.add("type '${action.text?.take(30)}' -> ${if (ok) "ok" else "fail"}")
                 }
 
@@ -130,10 +155,28 @@ class AgentLoop(
                 else -> history.add("unknown action ${action.type}")
             }
 
+            // Track failures so the next turn gets a screenshot and the backend a hint.
+            if (failed) {
+                failStreak++
+                wantScreenshot = true
+                if (failStreak >= 2) history.add("NOTE: last actions failed — try a different element or ask the user.")
+            } else {
+                failStreak = 0
+            }
+
             delay(700) // let the UI settle before the next observation
         }
 
         speaker.speak("हे काम खूप मोठं झालं, म्हणून मी थांबतो.")
         onStatus("step limit")
+    }
+
+    /** Wait briefly for the foreground app/screen to change after an action. */
+    private suspend fun waitForScreenChange(service: ManuAccessibilityService, beforePkg: String?) {
+        repeat(12) {
+            delay(200)
+            val now = service.rootInActiveWindow?.packageName?.toString()
+            if (now != null && now != beforePkg) return
+        }
     }
 }

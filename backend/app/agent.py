@@ -19,6 +19,23 @@ _JSON_RE = re.compile(r"\{.*\}", re.DOTALL)
 _HARD_KEYWORDS = ("pay", "payment", "transfer", "upi", "delete", "book", "buy", "order")
 
 
+def _looks_stuck(history: List[str]) -> bool:
+    """Heuristic: two trailing failures, or the same action tried three+ times."""
+    if not history:
+        return False
+    tail = history[-2:]
+    if len(tail) == 2 and all(("fail" in h or "not found" in h) for h in tail):
+        return True
+    # same leading token (the action verb) repeated a lot
+    verbs = [h.split()[0] for h in history if h.split()]
+    if verbs and verbs.count(verbs[-1]) >= 3 and history[-1].startswith(verbs[-1]):
+        # only treat as stuck if those repeats weren't clearly progressing
+        recent = [h for h in history[-3:] if h.startswith(verbs[-1])]
+        if len(recent) >= 3:
+            return True
+    return False
+
+
 def choose_model(obs: Observation, goal: str, step_index: int) -> str:
     """Cheap-first model routing. Escalate for vision or high-stakes/complex steps."""
     if obs.screenshot_b64:
@@ -94,6 +111,14 @@ def decide(
         )
 
     model = choose_model(obs, goal, step_index)
+    if _looks_stuck(history):
+        # Escalate reasoning and tell Claude to change tactics or ask the user.
+        model = settings.model_smart
+        history = history + [
+            "NOTE: recent attempts failed or repeated. Change approach, swipe to reveal "
+            "more, or use ask_user — do NOT repeat the same failing action."
+        ]
+
     user_turn = build_user_turn(goal, obs, history, user_reply)
     raw = _complete(model, system_prompt(), user_turn, obs.screenshot_b64)
     action = _parse_action(raw)
