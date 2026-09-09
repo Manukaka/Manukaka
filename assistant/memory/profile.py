@@ -1,13 +1,17 @@
 """Long-term memory: extract durable facts from each new conversation into
 profile.json, and render a compact profile.md that is injected into every chat."""
 import json
-from datetime import date
+from datetime import date, datetime
 from typing import Dict, List
 
 from .. import config
 from ..llm import ollama_client, prompts
+from ..log import get_logger
+
+log = get_logger(__name__)
 
 CATEGORIES = ("people", "commitments", "finances", "health", "work", "preferences")
+KEEP_BACKUPS = 10
 
 
 def load_profile() -> Dict:
@@ -40,6 +44,11 @@ def extract_from_conversation(source_label: str, conversation_text: str) -> None
     )
     if not result:
         return
+    try:
+        from . import commitments
+        commitments.add_from_extraction(result.get("commitments") or [], source_label)
+    except Exception:
+        log.exception("Structured commitment update failed for %s", source_label)
     profile = load_profile()
     today = date.today().isoformat()
     for cat in CATEGORIES:
@@ -57,11 +66,27 @@ def _fact_text(entry: Dict) -> str:
     return str(fact)
 
 
+def _backup_profile() -> None:
+    """Snapshot profile.json before an LLM merge rewrites it — a bad merge must
+    never be able to silently erase months of memory."""
+    if not config.PROFILE_JSON.exists():
+        return
+    config.PROFILE_BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    dest = config.PROFILE_BACKUP_DIR / f"profile-{stamp}.json"
+    dest.write_bytes(config.PROFILE_JSON.read_bytes())
+    backups = sorted(config.PROFILE_BACKUP_DIR.glob("profile-*.json"))
+    for old in backups[:-KEEP_BACKUPS]:
+        old.unlink(missing_ok=True)
+
+
 def _maybe_merge(profile: Dict) -> Dict:
     """When the profile grows too big, ask the LLM to dedupe and compact it."""
     total = sum(len(profile.get(c, [])) for c in CATEGORIES)
     if total <= config.CFG["profile"]["max_facts_before_merge"]:
         return profile
+    _backup_profile()
+    log.info("Profile reached %d facts; asking the LLM to compact it", total)
     listing = json.dumps(profile, ensure_ascii=False)[:20000]
     merged = ollama_client.extract(
         "Here is the current profile as JSON. Merge duplicates, keep the newest "

@@ -1,0 +1,31 @@
+{
+  "about": "Here is the data you requested.",
+  "chats": {
+    "about": "This page lists all chats from this export.",
+    "list": [
+      {
+        "name": null,
+        "type": "saved_messages",
+        "id": 1,
+        "messages": [
+          {"id": 10, "type": "message", "date": "2024-05-10T09:00:00", "from": "Me", "text": "note to self"}
+        ]
+      },
+      {
+        "name": "Priya",
+        "type": "personal_chat",
+        "id": 2,
+        "messages": [
+          {"id": 20, "type": "message", "date": "2024-05-13T21:41:07", "from": "Priya",
+           "text": "Passport renewal appointment 28 May la aahe"},
+          {"id": 21, "type": "service", "date": "2024-05-13T21:45:00", "actor": "Priya",
+           "action": "phone_call", "text": ""},
+          {"id": 22, "type": "message", "date": "2024-05-13T21:50:00", "from": "Manu",
+           "text": [{"type": "link", "text": "https://example.com/form"}, " ha form bhara"]},
+          {"id": 23, "type": "message", "date": "2024-05-13T21:55:00", "from": "Priya",
+           "text": "", "photo": "photos/photo_1.jpg"}
+        ]
+      }
+    ]
+  }
+}

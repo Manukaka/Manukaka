@@ -32,9 +32,10 @@ you can disconnect from the internet forever — Manu keeps working.
 
 | Data | How to export | Where to put it |
 |---|---|---|
-| **Call recordings** | Copy the audio files from your phone's recorder folder (`.m4a`, `.mp3`, `.amr`, `.opus` all work). Keep the original file names — Manu reads the contact name and date from them. | `ingest\audio\` |
+| **Call recordings** | Copy the audio files from your phone's recorder folder (`.m4a`, `.mp3`, `.amr`, `.opus` all work — exported voice notes too). Keep the original file names — Manu reads the contact name and date from them. | `ingest\audio\` |
 | **WhatsApp chats** | In WhatsApp open a chat → ⋮ → **More** → **Export chat** → **Without media**. Send the `.txt` to your laptop. Repeat per chat. | `ingest\whatsapp\` |
 | **SMS** | Install the free Android app **SMS Backup & Restore**, back up SMS as **XML**, copy the `.xml` to your laptop. | `ingest\sms\` |
+| **Telegram** | Telegram Desktop → Settings → Advanced → **Export Telegram data** → format **JSON**. Copy `result.json` to your laptop. | `ingest\telegram\` |
 
 You can drop **hundreds of files at once** — bulk is the whole point.
 
@@ -50,6 +51,11 @@ You can drop **hundreds of files at once** — bulk is the whole point.
    - *"What commitments do I have coming up?"*
    - *"Rahul ke saath Goa trip ka kya plan tha?"*
    - *"Looking at my conversations, what should I not forget this month?"*
+4. The header buttons do the rest: **Upcoming** lists commitments with due
+   dates pulled from your conversations, **People** shows everyone Manu knows
+   about (last contact, facts), and **Digest** writes a summary of your last
+   7 days. Your chat history is saved on disk and reappears when you reopen
+   the window.
 
 While files are processing, chat is paused (the graphics card is busy
 transcribing) — it unlocks automatically when processing finishes.
@@ -87,6 +93,13 @@ SMS .xml ─────── parser ──────────────
                                                                                         ▼
 you ⇄ desktop window (pywebview) ⇄ FastAPI ⇄ Ollama (qwen3:8b) ◄── profile.md + relevant excerpts
 ```
+
+- Retrieval is **hybrid**: a BM25 keyword search runs next to the vector search
+  and the two result lists are fused — names, amounts, and Hinglish phrases are
+  found even when embeddings miss them. Questions that name a contact or a time
+  window ("last week", "गेल्या आठवड्यात") boost matching conversations, and
+  answers cite their sources ([1], [2]) with the conversation and date shown
+  under the reply.
 
 - One 8 GB GPU runs everything by **taking turns**: the chat model is unloaded
   while Whisper transcribes, then reloaded for chatting.

@@ -11,7 +11,8 @@ from typing import Dict, List
 
 from .models import Message
 
-SOURCE_LABELS = {"whatsapp": "WhatsApp chat with", "sms": "SMS with", "call": "Phone call with"}
+SOURCE_LABELS = {"whatsapp": "WhatsApp chat with", "sms": "SMS with",
+                 "call": "Phone call with", "telegram": "Telegram chat with"}
 
 
 def sessionize(messages: List[Message], gap_hours: float = 3.0) -> List[List[Message]]:

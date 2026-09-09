@@ -11,6 +11,9 @@
     <div class="title">🪷 Manu <span class="sub">your private offline assistant</span></div>
     <div class="header-right">
       <span id="health" class="health">checking…</span>
+      <button id="upcomingBtn" class="secondary" title="Commitments with due dates, extracted from your conversations">Upcoming</button>
+      <button id="peopleBtn" class="secondary" title="People in your conversations and what Manu knows about them">People</button>
+      <button id="digestBtn" class="secondary" title="A summary of your last 7 days">Digest</button>
       <button id="ingestBtn" title="Process new files dropped into the ingest/ folders">Process new files</button>
     </div>
   </header>
@@ -19,18 +22,32 @@
     <div id="ingestLog"></div>
   </div>
 
-  <main id="chat">
-    <div class="msg assistant">
-      <div class="bubble">नमस्कार! 🙏 Drop your call recordings, WhatsApp exports and SMS backups
-      into the <b>ingest</b> folders, press <b>Process new files</b>, and then ask me anything
-      about your life — Marathi, Hindi, or English, जसं तुम्हाला सोयीचं वाटेल.</div>
-    </div>
-  </main>
+  <div id="infoPanel" class="hidden">
+    <div id="infoContent"></div>
+    <button id="infoClose" class="secondary">Close</button>
+  </div>
 
-  <footer>
-    <textarea id="input" rows="1" placeholder="Ask me anything… / काहीही विचारा…"></textarea>
-    <button id="sendBtn">Send</button>
-  </footer>
+  <div id="body">
+    <aside id="sidebar">
+      <button id="newChatBtn" title="Start a fresh conversation">＋ New chat</button>
+      <div id="convList"></div>
+    </aside>
+
+    <div id="chatcol">
+      <main id="chat">
+        <div class="msg assistant">
+          <div class="bubble">नमस्कार! 🙏 Drop your call recordings, WhatsApp exports and SMS backups
+          into the <b>ingest</b> folders, press <b>Process new files</b>, and then ask me anything
+          about your life — Marathi, Hindi, or English, जसं तुम्हाला सोयीचं वाटेल.</div>
+        </div>
+      </main>
+
+      <footer>
+        <textarea id="input" rows="1" placeholder="Ask me anything… / काहीही विचारा…"></textarea>
+        <button id="sendBtn">Send</button>
+      </footer>
+    </div>
+  </div>
 </div>
 <script src="/ui/app.js"></script>
 </body>

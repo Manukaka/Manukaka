@@ -1,6 +1,6 @@
 """BGE-M3 embeddings (lazy singleton). Runs on CPU by default so the GPU stays
 free for the LLM while chatting; pass device='cuda' for faster bulk ingestion."""
-from typing import List, Optional
+from typing import List
 
 from .. import config
 

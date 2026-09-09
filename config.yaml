@@ -26,9 +26,14 @@ rag:
   chunk_chars: 1800
   chunk_overlap_messages: 2
   session_gap_hours: 3
-  top_k_fetch: 10              # fetched from the vector store
-  top_k_use: 6                 # kept after recency boost, sent to the LLM
+  top_k_fetch: 10              # fetched from each search (vector + keyword)
+  top_k_use: 6                 # kept after fusion + boosts, sent to the LLM
   recency_boost: 0.1
+  hybrid: true                 # also run BM25 keyword search (better for names/amounts/Hinglish)
+  rrf_k: 60                    # rank-fusion constant; smaller = top ranks dominate more
+  contact_boost: 0.3           # boost chunks from a contact named in the question
+  date_boost: 0.3              # boost chunks inside a time window like "last week"
+  query_rewrite: true          # let the LLM rewrite follow-up questions into search queries
 
 # ---- Profile / long-term memory ----
 profile:
@@ -40,3 +45,5 @@ app:
   host: "127.0.0.1"
   port: 8765
   window_title: "Manu — Personal Assistant"
+  auto_ingest: false           # true = watch the ingest folders and process new files
+                               # automatically (transcribing calls pauses chat while it runs)

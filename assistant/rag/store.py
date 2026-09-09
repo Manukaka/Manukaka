@@ -35,9 +35,20 @@ def query(embedding: List[float], top_k: int) -> List[Dict]:
         return []
     res = col.query(query_embeddings=[embedding], n_results=min(top_k, col.count()))
     out = []
-    for doc, meta, dist in zip(res["documents"][0], res["metadatas"][0], res["distances"][0]):
-        out.append({"text": doc, "metadata": meta, "similarity": 1.0 - dist})
+    for cid, doc, meta, dist in zip(res["ids"][0], res["documents"][0],
+                                    res["metadatas"][0], res["distances"][0]):
+        out.append({"id": cid, "text": doc, "metadata": meta, "similarity": 1.0 - dist})
     return out
+
+
+def get_all() -> List[Dict]:
+    """Every stored chunk — feeds the BM25 keyword index."""
+    col = _get_collection()
+    if col.count() == 0:
+        return []
+    res = col.get(include=["documents", "metadatas"])
+    return [{"id": cid, "text": doc, "metadata": meta}
+            for cid, doc, meta in zip(res["ids"], res["documents"], res["metadatas"])]
 
 
 def count() -> int:

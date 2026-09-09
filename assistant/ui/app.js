@@ -8,6 +8,7 @@ const healthEl = document.getElementById("health");
 
 let history = []; // [{role, content}]
 let busy = false;
+let convId = null; // active conversation; null = a fresh, unsaved chat
 
 function addBubble(role, text) {
   const msg = document.createElement("div");
@@ -30,6 +31,43 @@ function renderMd(el, text) {
   el.innerHTML = safe;
 }
 
+// Sources footer under an answer: only the excerpts the model actually
+// cited as [n]; if it cited nothing, stay quiet rather than list guesses.
+// Call sources are clickable and open their transcript.
+function addSources(bubble, sources, answer) {
+  const cited = sources.filter((s) => answer.includes("[" + s.n + "]"));
+  if (!cited.length) return;
+  const box = document.createElement("div");
+  box.className = "sources";
+  box.append("📎 ");
+  cited.forEach((s, i) => {
+    if (i) box.append(" · ");
+    const chip = document.createElement("span");
+    chip.textContent = "[" + s.n + "] " + s.label;
+    if (s.type === "call" && s.file) {
+      chip.className = "source-link";
+      chip.title = "Open the call transcript";
+      chip.addEventListener("click", () => openTranscript(s.file));
+    }
+    box.appendChild(chip);
+  });
+  bubble.appendChild(box);
+}
+
+async function openTranscript(file) {
+  const stem = file.replace(/\.[^.]+$/, "");
+  showInfo("Loading transcript…");
+  try {
+    const res = await fetch("/api/transcripts/" + encodeURIComponent(stem));
+    if (!res.ok) { showInfo("Transcript not found."); return; }
+    const data = await res.json();
+    showInfo("<h3>📞 " + esc(stem) + "</h3><pre class='transcript'>" +
+      esc(data.text) + "</pre>");
+  } catch (e) {
+    showInfo("⚠ " + esc(e.message));
+  }
+}
+
 async function send() {
   const text = inputEl.value.trim();
   if (!text || busy) return;
@@ -43,7 +81,7 @@ async function send() {
     const res = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: text, history }),
+      body: JSON.stringify({ message: text, history, conv_id: convId }),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
@@ -66,6 +104,12 @@ async function send() {
           answer += data.delta;
           renderMd(bubble, answer);
           chatEl.scrollTop = chatEl.scrollHeight;
+        }
+        if (data.sources) addSources(bubble, data.sources, answer);
+        if (data.done && data.conv_id) {
+          const wasNew = convId === null;
+          convId = data.conv_id;
+          if (wasNew) loadConversations();  // a new chat just got a title
         }
         if (data.error) bubble.textContent = "Error: " + data.error;
       }
@@ -112,6 +156,165 @@ async function pollStatus() {
     setTimeout(() => ingestPanel.classList.add("hidden"), 8000);
   }
 }
+
+// ---- Info panels: Upcoming / People / Digest ----
+const infoPanel = document.getElementById("infoPanel");
+const infoContent = document.getElementById("infoContent");
+document.getElementById("infoClose").addEventListener("click", () =>
+  infoPanel.classList.add("hidden"));
+
+function showInfo(html) {
+  infoContent.innerHTML = html;
+  infoPanel.classList.remove("hidden");
+}
+
+function esc(s) {
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+document.getElementById("upcomingBtn").addEventListener("click", async () => {
+  showInfo("Loading…");
+  const data = await (await fetch("/api/upcoming")).json();
+  let html = "<h3>📅 Upcoming</h3>";
+  if (!data.due.length && !data.undated.length) {
+    html += "<p class='muted'>No commitments found yet — process some files first.</p>";
+  }
+  for (const c of data.due) {
+    html += "<div class='row'><b>" + esc(c.due_date) + "</b> — " + esc(c.what) +
+      (c.with_whom ? " <span class='muted'>(with " + esc(c.with_whom) + ")</span>" : "") +
+      "</div>";
+  }
+  if (data.undated.length) {
+    html += "<h4>No date, but mentioned recently</h4>";
+    for (const c of data.undated) {
+      html += "<div class='row'>" + esc(c.what) +
+        (c.due_text ? " <span class='muted'>(" + esc(c.due_text) + ")</span>" : "") +
+        "</div>";
+    }
+  }
+  showInfo(html);
+});
+
+document.getElementById("peopleBtn").addEventListener("click", async () => {
+  showInfo("Loading…");
+  const data = await (await fetch("/api/contacts")).json();
+  let html = "<h3>👥 People</h3>";
+  if (!data.contacts.length) {
+    html += "<p class='muted'>No conversations indexed yet.</p>";
+  }
+  for (const p of data.contacts) {
+    const when = p.last_ts ? new Date(p.last_ts * 1000).toLocaleDateString() : "—";
+    html += "<div class='row'><b>" + esc(p.name) + "</b> <span class='muted'>· last " +
+      esc(when) + " · " + p.chunks + " memories · " + esc(p.sources.join(", ")) + "</span>";
+    for (const f of p.facts.slice(0, 4)) html += "<div class='fact'>" + esc(f) + "</div>";
+    html += "</div>";
+  }
+  showInfo(html);
+});
+
+document.getElementById("digestBtn").addEventListener("click", async () => {
+  showInfo("✍️ Writing your digest — this can take a minute…");
+  try {
+    const res = await fetch("/api/digest", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ days: 7 }),
+    });
+    const data = await res.json();
+    if (!res.ok) { showInfo("⚠ " + esc(data.detail || "Digest failed")); return; }
+    if (!data.digest) { showInfo(esc(data.message || "Nothing to digest yet.")); return; }
+    infoPanel.classList.add("hidden");
+    const bubble = addBubble("assistant", "");
+    renderMd(bubble, "**📋 Your last 7 days**\n\n" + data.digest);
+  } catch (e) {
+    showInfo("⚠ " + esc(e.message));
+  }
+});
+
+// ---- Conversations sidebar ----
+const convListEl = document.getElementById("convList");
+const introMsg = chatEl.querySelector(".msg"); // the welcome bubble
+
+function clearChat() {
+  chatEl.querySelectorAll(".msg").forEach((m) => {
+    if (m !== introMsg) m.remove();
+  });
+  if (introMsg) introMsg.hidden = false;
+  history = [];
+}
+
+async function loadConversations() {
+  try {
+    const data = await (await fetch("/api/conversations")).json();
+    renderConvList(data.conversations || []);
+  } catch { /* sidebar is optional */ }
+}
+
+function renderConvList(convs) {
+  convListEl.innerHTML = "";
+  for (const c of convs) {
+    const row = document.createElement("div");
+    row.className = "conv" + (c.id === convId ? " active" : "");
+    const label = document.createElement("span");
+    label.className = "conv-title";
+    label.textContent = c.title;
+    label.title = c.title;
+    label.addEventListener("click", () => openConversation(c.id));
+    const del = document.createElement("span");
+    del.className = "conv-del";
+    del.textContent = "🗑";
+    del.title = "Delete this conversation";
+    del.addEventListener("click", (e) => { e.stopPropagation(); deleteConversation(c.id); });
+    row.append(label, del);
+    convListEl.appendChild(row);
+  }
+}
+
+async function openConversation(id) {
+  if (busy) return;
+  convId = id;
+  clearChat();
+  if (introMsg) introMsg.hidden = true;
+  try {
+    const data = await (await fetch("/api/history?limit=200&conv_id=" + id)).json();
+    for (const m of data.messages) {
+      const bubble = addBubble(m.role === "user" ? "user" : "assistant", "");
+      renderMd(bubble, m.content);
+    }
+    history = data.messages.slice(-16);
+  } catch { /* leave it empty */ }
+  await loadConversations();
+  inputEl.focus();
+}
+
+async function deleteConversation(id) {
+  await fetch("/api/conversations/" + id, { method: "DELETE" });
+  if (id === convId) newChat();
+  else loadConversations();
+}
+
+function newChat() {
+  convId = null;
+  clearChat();
+  loadConversations();
+  inputEl.focus();
+}
+
+document.getElementById("newChatBtn").addEventListener("click", newChat);
+
+// ---- Restore the most recent conversation on load ----
+async function initConversations() {
+  try {
+    const data = await (await fetch("/api/conversations")).json();
+    const convs = data.conversations || [];
+    if (convs.length) {
+      await openConversation(convs[0].id);
+    } else {
+      renderConvList([]);
+    }
+  } catch { /* fresh chat is fine */ }
+}
+initConversations();
 
 // ---- Health ----
 async function refreshHealth() {

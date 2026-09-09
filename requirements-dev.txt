@@ -1,0 +1,10 @@
+# Light dependencies for tests + lint (CI installs only this file; the heavy
+# ML stack from requirements.txt is not needed to test parsers/server/rag logic)
+fastapi==0.115.12
+httpx==0.28.1
+requests==2.32.3
+pyyaml==6.0.2
+python-dateutil==2.9.0.post0
+
+pytest==8.3.5
+ruff==0.11.7

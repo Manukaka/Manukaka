@@ -11,18 +11,26 @@ A sha256 manifest makes re-running over the same drop folders a no-op.
 """
 import hashlib
 import json
+import threading
 import traceback
 from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
 from .. import config
 from ..llm import ollama_client
+from ..log import get_logger
 from ..memory import profile as memory_profile
 from . import audio as audio_mod
-from . import chunking, sms, whatsapp
+from . import chunking, sms, telegram, whatsapp
 from .models import Message
 
 StatusCb = Callable[[str], None]
+
+log = get_logger(__name__)
+
+# Set while whisper/pyannote own the GPU (chatting then would OOM the card).
+# The server only blocks chat during this window, not the whole ingest run.
+GPU_BUSY = threading.Event()
 
 
 def _sha256(path: Path) -> str:
@@ -60,20 +68,22 @@ def run_ingest(status: StatusCb = print) -> Dict[str, int]:
     """Process everything new in the ingest/ folders. Returns simple counters."""
     config.ensure_dirs()
     manifest = _load_manifest()
-    counters = {"audio": 0, "whatsapp": 0, "sms": 0, "chunks": 0, "errors": 0}
+    counters = {"audio": 0, "whatsapp": 0, "sms": 0, "telegram": 0, "chunks": 0, "errors": 0}
     all_messages: List[Message] = []
     sessions_for_profile: List[tuple] = []  # (source_label, text)
 
     audio_files = _new_files(config.INGEST_AUDIO, audio_mod.AUDIO_EXTS, manifest)
     wa_files = _new_files(config.INGEST_WHATSAPP, {".txt"}, manifest)
     sms_files = _new_files(config.INGEST_SMS, {".xml"}, manifest)
+    tg_files = _new_files(config.INGEST_TELEGRAM, {".json"}, manifest)
 
-    if not (audio_files or wa_files or sms_files):
+    if not (audio_files or wa_files or sms_files or tg_files):
         status("No new files found in the ingest folders.")
         return counters
 
     # ---- Phase 1-3: audio (GPU) ----
     if audio_files:
+        GPU_BUSY.set()
         status("Freeing GPU memory (unloading LLM)…")
         ollama_client.unload()
         status("Loading speech models (first time can take a few minutes)…")
@@ -95,10 +105,12 @@ def run_ingest(status: StatusCb = print) -> Dict[str, int]:
                     counters["audio"] += 1
                 except Exception:
                     counters["errors"] += 1
+                    log.exception("Transcription failed for %s", f.name)
                     status(f"FAILED on {f.name}:\n{traceback.format_exc(limit=2)}")
         finally:
             status("Releasing speech models from GPU…")
             pipeline.close()
+            GPU_BUSY.clear()
 
     # ---- Phase 4a: parse text sources (CPU) ----
     for f in wa_files:
@@ -110,6 +122,7 @@ def run_ingest(status: StatusCb = print) -> Dict[str, int]:
             counters["whatsapp"] += 1
         except Exception:
             counters["errors"] += 1
+            log.exception("WhatsApp parse failed for %s", f.name)
             status(f"FAILED on {f.name}:\n{traceback.format_exc(limit=2)}")
 
     for f in sms_files:
@@ -121,6 +134,19 @@ def run_ingest(status: StatusCb = print) -> Dict[str, int]:
             counters["sms"] += 1
         except Exception:
             counters["errors"] += 1
+            log.exception("SMS parse failed for %s", f.name)
+            status(f"FAILED on {f.name}:\n{traceback.format_exc(limit=2)}")
+
+    for f in tg_files:
+        status(f"Reading Telegram export: {f.name}")
+        try:
+            msgs = telegram.parse_telegram(f)
+            all_messages.extend(msgs)
+            manifest[_sha256(f)] = f.name
+            counters["telegram"] += 1
+        except Exception:
+            counters["errors"] += 1
+            log.exception("Telegram parse failed for %s", f.name)
             status(f"FAILED on {f.name}:\n{traceback.format_exc(limit=2)}")
 
     # ---- Phase 4b: chunk + embed (CPU) + store ----
@@ -167,12 +193,13 @@ def run_ingest(status: StatusCb = print) -> Dict[str, int]:
                     memory_profile.extract_from_conversation(label, convo)
                 except Exception:
                     counters["errors"] += 1
+                    log.exception("Profile extraction failed for %s", label)
         else:
             status("Ollama is not running — skipping profile update (data is still indexed).")
 
     status(
         f"Done. Calls: {counters['audio']}, WhatsApp files: {counters['whatsapp']}, "
-        f"SMS files: {counters['sms']}, chunks indexed: {counters['chunks']}, "
-        f"errors: {counters['errors']}."
+        f"SMS files: {counters['sms']}, Telegram files: {counters['telegram']}, "
+        f"chunks indexed: {counters['chunks']}, errors: {counters['errors']}."
     )
     return counters
