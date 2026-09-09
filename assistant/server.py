@@ -68,6 +68,7 @@ STATE = IngestState()
 class ChatRequest(BaseModel):
     message: str
     history: Optional[List[dict]] = None  # [{role, content}, ...]
+    conv_id: Optional[int] = None         # which named conversation to append to
 
 
 @app.get("/")
@@ -117,13 +118,49 @@ def status():
 
 
 @app.get("/api/history")
-def history(limit: int = 40):
-    """Persisted chat messages so the conversation survives restarts."""
+def history(limit: int = 40, conv_id: Optional[int] = None):
+    """Persisted chat messages for one conversation (the current one if unset)."""
     try:
-        return {"messages": chatlog.recent(limit)}
+        return {"messages": chatlog.recent(limit, conv_id)}
     except Exception:
         log.exception("Could not load chat history")
         return {"messages": []}
+
+
+@app.get("/api/conversations")
+def conversations():
+    """All named conversations, most recent first."""
+    try:
+        return {"conversations": chatlog.list_conversations()}
+    except Exception:
+        log.exception("Could not list conversations")
+        return {"conversations": []}
+
+
+class NewConversation(BaseModel):
+    title: Optional[str] = None
+
+
+@app.post("/api/conversations")
+def new_conversation(req: NewConversation):
+    cid = chatlog.create_conversation(req.title or chatlog.DEFAULT_TITLE)
+    return {"id": cid, "title": req.title or chatlog.DEFAULT_TITLE}
+
+
+class RenameConversation(BaseModel):
+    title: str
+
+
+@app.post("/api/conversations/{conv_id}/rename")
+def rename_conversation(conv_id: int, req: RenameConversation):
+    chatlog.rename(conv_id, req.title)
+    return {"ok": True}
+
+
+@app.delete("/api/conversations/{conv_id}")
+def delete_conversation(conv_id: int):
+    chatlog.delete_conversation(conv_id)
+    return {"ok": True}
 
 
 @app.get("/api/upcoming")
@@ -280,17 +317,17 @@ def chat(req: ChatRequest):
                 yield f"data: {json.dumps({'delta': chunk})}\n\n"
             if sources:
                 yield f"data: {json.dumps({'sources': sources})}\n\n"
-            yield f"data: {json.dumps({'done': True})}\n\n"
+            cid = req.conv_id
+            if answer_parts:
+                try:
+                    cid = chatlog.append("user", question, req.conv_id)
+                    chatlog.append("assistant", "".join(answer_parts), cid)
+                except Exception:
+                    log.exception("Could not persist the chat turn")
+            yield f"data: {json.dumps({'done': True, 'conv_id': cid})}\n\n"
         except Exception as e:
             log.exception("Chat stream failed")
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
-        finally:
-            if answer_parts:
-                try:
-                    chatlog.append("user", question)
-                    chatlog.append("assistant", "".join(answer_parts))
-                except Exception:
-                    log.exception("Could not persist the chat turn")
 
     return StreamingResponse(stream(), media_type="text/event-stream")
 

@@ -54,6 +54,29 @@ button.secondary {
 .source-link { color: var(--accent); cursor: pointer; }
 .source-link:hover { text-decoration: underline; }
 
+#body { flex: 1; display: flex; min-height: 0; }
+#chatcol { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+#sidebar {
+  width: 220px; flex-shrink: 0; background: #14161f;
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; overflow-y: auto; padding: 10px;
+}
+#newChatBtn { width: 100%; margin-bottom: 10px; }
+#convList { display: flex; flex-direction: column; gap: 2px; }
+.conv {
+  display: flex; align-items: center; gap: 6px; padding: 7px 8px;
+  border-radius: 8px; cursor: pointer; font-size: 13px;
+}
+.conv:hover { background: var(--panel); }
+.conv.active { background: var(--me); }
+.conv-title {
+  flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.conv-del { opacity: 0; font-size: 12px; }
+.conv:hover .conv-del { opacity: 0.6; }
+.conv-del:hover { opacity: 1; }
+
 main#chat { flex: 1; overflow-y: auto; padding: 18px; display: flex; flex-direction: column; gap: 12px; }
 .msg { display: flex; }
 .msg.user { justify-content: flex-end; }

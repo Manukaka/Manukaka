@@ -8,6 +8,7 @@ const healthEl = document.getElementById("health");
 
 let history = []; // [{role, content}]
 let busy = false;
+let convId = null; // active conversation; null = a fresh, unsaved chat
 
 function addBubble(role, text) {
   const msg = document.createElement("div");
@@ -80,7 +81,7 @@ async function send() {
     const res = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: text, history }),
+      body: JSON.stringify({ message: text, history, conv_id: convId }),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
@@ -105,6 +106,11 @@ async function send() {
           chatEl.scrollTop = chatEl.scrollHeight;
         }
         if (data.sources) addSources(bubble, data.sources, answer);
+        if (data.done && data.conv_id) {
+          const wasNew = convId === null;
+          convId = data.conv_id;
+          if (wasNew) loadConversations();  // a new chat just got a title
+        }
         if (data.error) bubble.textContent = "Error: " + data.error;
       }
     }
@@ -225,19 +231,90 @@ document.getElementById("digestBtn").addEventListener("click", async () => {
   }
 });
 
-// ---- Restore persisted chat on load ----
-async function restoreHistory() {
+// ---- Conversations sidebar ----
+const convListEl = document.getElementById("convList");
+const introMsg = chatEl.querySelector(".msg"); // the welcome bubble
+
+function clearChat() {
+  chatEl.querySelectorAll(".msg").forEach((m) => {
+    if (m !== introMsg) m.remove();
+  });
+  if (introMsg) introMsg.hidden = false;
+  history = [];
+}
+
+async function loadConversations() {
   try {
-    const res = await fetch("/api/history?limit=40");
-    const data = await res.json();
+    const data = await (await fetch("/api/conversations")).json();
+    renderConvList(data.conversations || []);
+  } catch { /* sidebar is optional */ }
+}
+
+function renderConvList(convs) {
+  convListEl.innerHTML = "";
+  for (const c of convs) {
+    const row = document.createElement("div");
+    row.className = "conv" + (c.id === convId ? " active" : "");
+    const label = document.createElement("span");
+    label.className = "conv-title";
+    label.textContent = c.title;
+    label.title = c.title;
+    label.addEventListener("click", () => openConversation(c.id));
+    const del = document.createElement("span");
+    del.className = "conv-del";
+    del.textContent = "🗑";
+    del.title = "Delete this conversation";
+    del.addEventListener("click", (e) => { e.stopPropagation(); deleteConversation(c.id); });
+    row.append(label, del);
+    convListEl.appendChild(row);
+  }
+}
+
+async function openConversation(id) {
+  if (busy) return;
+  convId = id;
+  clearChat();
+  if (introMsg) introMsg.hidden = true;
+  try {
+    const data = await (await fetch("/api/history?limit=200&conv_id=" + id)).json();
     for (const m of data.messages) {
       const bubble = addBubble(m.role === "user" ? "user" : "assistant", "");
       renderMd(bubble, m.content);
     }
     history = data.messages.slice(-16);
+  } catch { /* leave it empty */ }
+  await loadConversations();
+  inputEl.focus();
+}
+
+async function deleteConversation(id) {
+  await fetch("/api/conversations/" + id, { method: "DELETE" });
+  if (id === convId) newChat();
+  else loadConversations();
+}
+
+function newChat() {
+  convId = null;
+  clearChat();
+  loadConversations();
+  inputEl.focus();
+}
+
+document.getElementById("newChatBtn").addEventListener("click", newChat);
+
+// ---- Restore the most recent conversation on load ----
+async function initConversations() {
+  try {
+    const data = await (await fetch("/api/conversations")).json();
+    const convs = data.conversations || [];
+    if (convs.length) {
+      await openConversation(convs[0].id);
+    } else {
+      renderConvList([]);
+    }
   } catch { /* fresh chat is fine */ }
 }
-restoreHistory();
+initConversations();
 
 // ---- Health ----
 async function refreshHealth() {

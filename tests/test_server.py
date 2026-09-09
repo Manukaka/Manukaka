@@ -101,6 +101,44 @@ def test_history_endpoint_returns_persisted_messages(client, tmp_data_dirs):
                                 {"role": "assistant", "content": "namaste"}]
 
 
+def test_conversations_crud_endpoints(client, tmp_data_dirs):
+    created = client.post("/api/conversations", json={"title": "Goa trip"}).json()
+    cid = created["id"]
+    assert created["title"] == "Goa trip"
+
+    listing = client.get("/api/conversations").json()["conversations"]
+    assert any(c["id"] == cid and c["title"] == "Goa trip" for c in listing)
+
+    client.post(f"/api/conversations/{cid}/rename", json={"title": "Goa 2026"})
+    listing = client.get("/api/conversations").json()["conversations"]
+    assert next(c for c in listing if c["id"] == cid)["title"] == "Goa 2026"
+
+    assert client.delete(f"/api/conversations/{cid}").json() == {"ok": True}
+    listing = client.get("/api/conversations").json()["conversations"]
+    assert all(c["id"] != cid for c in listing)
+
+
+def test_chat_appends_to_requested_conversation(client, monkeypatch, tmp_data_dirs):
+    from assistant.memory import chatlog
+    cid = chatlog.create_conversation("thread A")
+    monkeypatch.setattr(ollama_client, "is_up", lambda: True)
+    monkeypatch.setattr(ollama_client, "chat_stream", lambda messages: iter(["ans"]))
+
+    r = client.post("/api/chat", json={"message": "q", "conv_id": cid})
+    assert ('"conv_id": %d' % cid) in r.text
+    assert [m["content"] for m in chatlog.recent(conv_id=cid)] == ["q", "ans"]
+
+
+def test_history_endpoint_scopes_to_conv_id(client, tmp_data_dirs):
+    from assistant.memory import chatlog
+    a = chatlog.create_conversation("A")
+    b = chatlog.create_conversation("B")
+    chatlog.append("user", "in A", a)
+    chatlog.append("user", "in B", b)
+    msgs = client.get(f"/api/history?conv_id={a}").json()["messages"]
+    assert [m["content"] for m in msgs] == ["in A"]
+
+
 def test_upcoming_endpoint(client, tmp_data_dirs):
     from assistant.memory import commitments
     commitments.save([{"what": "pay bill", "due_date": "2030-01-01",

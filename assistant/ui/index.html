@@ -27,18 +27,27 @@
     <button id="infoClose" class="secondary">Close</button>
   </div>
 
-  <main id="chat">
-    <div class="msg assistant">
-      <div class="bubble">नमस्कार! 🙏 Drop your call recordings, WhatsApp exports and SMS backups
-      into the <b>ingest</b> folders, press <b>Process new files</b>, and then ask me anything
-      about your life — Marathi, Hindi, or English, जसं तुम्हाला सोयीचं वाटेल.</div>
-    </div>
-  </main>
+  <div id="body">
+    <aside id="sidebar">
+      <button id="newChatBtn" title="Start a fresh conversation">＋ New chat</button>
+      <div id="convList"></div>
+    </aside>
 
-  <footer>
-    <textarea id="input" rows="1" placeholder="Ask me anything… / काहीही विचारा…"></textarea>
-    <button id="sendBtn">Send</button>
-  </footer>
+    <div id="chatcol">
+      <main id="chat">
+        <div class="msg assistant">
+          <div class="bubble">नमस्कार! 🙏 Drop your call recordings, WhatsApp exports and SMS backups
+          into the <b>ingest</b> folders, press <b>Process new files</b>, and then ask me anything
+          about your life — Marathi, Hindi, or English, जसं तुम्हाला सोयीचं वाटेल.</div>
+        </div>
+      </main>
+
+      <footer>
+        <textarea id="input" rows="1" placeholder="Ask me anything… / काहीही विचारा…"></textarea>
+        <button id="sendBtn">Send</button>
+      </footer>
+    </div>
+  </div>
 </div>
 <script src="/ui/app.js"></script>
 </body>

@@ -104,9 +104,11 @@ is merged to `main`.
 1. ✅ **Persistent chat history** (`memory/chatlog.py`, SQLite): every chat
    turn is stored in `data/chat.db`; `/api/history` restores it on window
    open. *(Multiple named conversations still to do — see sub-plan below.)*
-2. ⬜ **Named conversations** — sub-plan: `conversations` table + `conv_id`
-   column, `GET/POST /api/conversations`, a left sidebar in the UI, and
-   "new chat" resets context without deleting history.
+2. ✅ **Named conversations**: `conversations` table + `conv_id` on messages
+   (with an in-place migration for the old flat schema), `GET/POST/DELETE
+   /api/conversations` + rename, a left sidebar in the UI, and a "＋ New chat"
+   button that resets context without deleting history. New chats auto-title
+   from their first message.
 3. ✅ **Transcript browser**: `GET /api/transcripts` (list) and
    `GET /api/transcripts/{stem}` (text, lookup restricted to real transcript
    files so path traversal is impossible); call-source citation chips in the
@@ -122,7 +124,7 @@ Phase 1 is the multiplier — every later feature lands faster and safer on top
 of CI + tests + logging. Phases 2 and 3 deliver the most user-visible
 intelligence gains. Phases 4 and 5 can be interleaved based on need.
 
-Remaining items, in suggested order: named conversations (5.2) →
-email parser (4.4) → packaging (5.4, needs Windows).
+Remaining items, in suggested order: email parser (4.4) →
+packaging (5.4, needs Windows).
 
 Each remaining item should land as its own small PR with tests.
